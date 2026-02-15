@@ -1,0 +1,281 @@
+'use client'
+
+import { useEffect, useState } from 'react'
+
+interface PricingRecord {
+  id: string
+  trip_type: string
+  display_name: string
+  duration_hours: number | null
+  start_time: string | null
+  end_time: string | null
+  base_price: number
+  deposit_amount: number
+  active: boolean
+}
+
+export default function PricingPage() {
+  const [pricing, setPricing] = useState<PricingRecord[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+  const [editingId, setEditingId] = useState<string | null>(null)
+  const [editValues, setEditValues] = useState<{ base_price: number; deposit_amount: number }>({
+    base_price: 0,
+    deposit_amount: 0,
+  })
+  const [saving, setSaving] = useState(false)
+
+  useEffect(() => {
+    fetchPricing()
+  }, [])
+
+  async function fetchPricing() {
+    try {
+      const res = await fetch('/api/pricing')
+      if (!res.ok) {
+        throw new Error('Failed to fetch pricing')
+      }
+      const data = await res.json()
+      setPricing(data)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to load pricing')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  function startEdit(record: PricingRecord) {
+    setEditingId(record.id)
+    setEditValues({
+      base_price: record.base_price,
+      deposit_amount: record.deposit_amount,
+    })
+  }
+
+  function cancelEdit() {
+    setEditingId(null)
+    setEditValues({ base_price: 0, deposit_amount: 0 })
+  }
+
+  async function saveEdit(id: string) {
+    setSaving(true)
+    setError(null)
+
+    try {
+      const res = await fetch(`/api/pricing/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(editValues),
+      })
+
+      if (!res.ok) {
+        const data = await res.json()
+        throw new Error(data.error || 'Failed to update')
+      }
+
+      const updated = await res.json()
+      setPricing(prev => prev.map(p => (p.id === id ? updated : p)))
+      setEditingId(null)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to save')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  async function toggleActive(record: PricingRecord) {
+    try {
+      const res = await fetch(`/api/pricing/${record.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ active: !record.active }),
+      })
+
+      if (!res.ok) {
+        throw new Error('Failed to update')
+      }
+
+      const updated = await res.json()
+      setPricing(prev => prev.map(p => (p.id === record.id ? updated : p)))
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to update')
+    }
+  }
+
+  function formatTime(time: string | null): string {
+    if (!time) return ''
+    const [hours, minutes] = time.split(':')
+    const h = parseInt(hours)
+    const ampm = h >= 12 ? 'pm' : 'am'
+    const h12 = h % 12 || 12
+    return `${h12}:${minutes}${ampm}`
+  }
+
+  if (loading) {
+    return (
+      <div className="text-center py-12">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-teal-500 mx-auto"></div>
+      </div>
+    )
+  }
+
+  return (
+    <div>
+      <div className="mb-6">
+        <h1 className="text-2xl font-bold text-gray-900">Pricing</h1>
+        <p className="mt-1 text-sm text-gray-500">
+          Manage your trip prices and deposits.
+        </p>
+      </div>
+
+      {error && (
+        <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-lg text-red-700">
+          {error}
+        </div>
+      )}
+
+      {pricing.length === 0 ? (
+        <div className="bg-white rounded-lg shadow p-8 text-center">
+          <p className="text-gray-500">No pricing configured yet.</p>
+          <p className="text-sm text-gray-400 mt-2">
+            Pricing will appear here once it&apos;s set up.
+          </p>
+        </div>
+      ) : (
+        <div className="bg-white shadow rounded-lg overflow-hidden">
+          <table className="min-w-full divide-y divide-gray-200">
+            <thead className="bg-gray-50">
+              <tr>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Trip Type
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Duration
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Time Range
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Base Price
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Deposit
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Status
+                </th>
+                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Actions
+                </th>
+              </tr>
+            </thead>
+            <tbody className="bg-white divide-y divide-gray-200">
+              {pricing.map((record) => (
+                <tr key={record.id} className={!record.active ? 'bg-gray-50 opacity-60' : ''}>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <div className="text-sm font-medium text-gray-900">
+                      {record.display_name}
+                    </div>
+                    <div className="text-xs text-gray-500">{record.trip_type}</div>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                    {record.duration_hours ? `${record.duration_hours} hours` : '-'}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                    {record.start_time && record.end_time
+                      ? `${formatTime(record.start_time)} - ${formatTime(record.end_time)}`
+                      : '-'}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    {editingId === record.id ? (
+                      <input
+                        type="number"
+                        min="1"
+                        step="1"
+                        value={editValues.base_price}
+                        onChange={(e) =>
+                          setEditValues({ ...editValues, base_price: Number(e.target.value) })
+                        }
+                        className="w-24 px-2 py-1 border border-gray-300 rounded-md text-sm"
+                      />
+                    ) : (
+                      <span className="text-sm font-medium text-gray-900">
+                        ${record.base_price.toLocaleString()}
+                      </span>
+                    )}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    {editingId === record.id ? (
+                      <input
+                        type="number"
+                        min="0"
+                        step="1"
+                        value={editValues.deposit_amount}
+                        onChange={(e) =>
+                          setEditValues({ ...editValues, deposit_amount: Number(e.target.value) })
+                        }
+                        className="w-24 px-2 py-1 border border-gray-300 rounded-md text-sm"
+                      />
+                    ) : (
+                      <span className="text-sm text-gray-900">
+                        ${record.deposit_amount.toLocaleString()}
+                      </span>
+                    )}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <button
+                      onClick={() => toggleActive(record)}
+                      className={`px-2 py-1 text-xs font-medium rounded ${
+                        record.active
+                          ? 'bg-green-100 text-green-800'
+                          : 'bg-gray-100 text-gray-600'
+                      }`}
+                    >
+                      {record.active ? 'Active' : 'Inactive'}
+                    </button>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                    {editingId === record.id ? (
+                      <div className="flex justify-end space-x-2">
+                        <button
+                          onClick={() => saveEdit(record.id)}
+                          disabled={saving}
+                          className="text-teal-600 hover:text-teal-800 disabled:opacity-50"
+                        >
+                          {saving ? 'Saving...' : 'Save'}
+                        </button>
+                        <button
+                          onClick={cancelEdit}
+                          disabled={saving}
+                          className="text-gray-500 hover:text-gray-700"
+                        >
+                          Cancel
+                        </button>
+                      </div>
+                    ) : (
+                      <button
+                        onClick={() => startEdit(record)}
+                        className="text-teal-600 hover:text-teal-800"
+                      >
+                        Edit
+                      </button>
+                    )}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      <div className="mt-6 bg-blue-50 border border-blue-200 rounded-lg p-4">
+        <h3 className="text-sm font-medium text-blue-800">Pricing Tips</h3>
+        <ul className="mt-2 text-sm text-blue-700 list-disc list-inside space-y-1">
+          <li>Deposit is held when customers book, captured when you confirm.</li>
+          <li>If you decline a booking, the deposit hold is released automatically.</li>
+          <li>Mark a trip type as inactive to temporarily hide it from booking.</li>
+        </ul>
+      </div>
+    </div>
+  )
+}
