@@ -1,4 +1,4 @@
-// Database types for Charter Direct
+// Database types for Cast Off
 
 export interface Operator {
   id: string

@@ -108,7 +108,7 @@ export default function ClaimPage() {
     <div className="min-h-screen bg-gradient-to-b from-teal-50 to-white flex items-center justify-center p-4">
       <div className="max-w-md w-full">
         <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold text-gray-800">Charter Direct</h1>
+          <h1 className="text-3xl font-bold text-gray-800">Cast Off</h1>
           <p className="text-gray-600 mt-2">Claim your operator page</p>
         </div>
         

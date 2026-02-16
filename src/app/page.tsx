@@ -61,7 +61,7 @@ export default async function Home() {
       <nav className="border-b border-gray-200 bg-white/80 backdrop-blur-sm sticky top-0 z-50">
         <div className="max-w-6xl mx-auto px-4 py-4 flex items-center justify-between">
           <span className="text-xl font-bold text-sky-600 flex items-center gap-2">
-            ⛵ Charter Direct
+            ⛵ Cast Off
           </span>
           <div className="flex items-center gap-4">
             <Link href="/pricing" className="text-sm text-gray-600 hover:text-gray-900">
@@ -145,7 +145,7 @@ export default async function Home() {
           <h2 className="text-3xl font-bold mb-4">Own Your Bookings</h2>
           <p className="text-gray-300 max-w-2xl mx-auto mb-8">
             Stop giving 15-25% of every booking to marketplace middlemen.
-            Charter Direct lets you accept direct bookings with your own Stripe account.
+            Cast Off lets you accept direct bookings with your own Stripe account.
             You keep 100% of every dollar.
           </p>
           <div className="flex justify-center gap-4 flex-wrap">
@@ -168,7 +168,7 @@ export default async function Home() {
       {/* Footer */}
       <footer className="border-t border-gray-200 py-8">
         <div className="max-w-6xl mx-auto px-4 flex flex-col md:flex-row items-center justify-between text-sm text-gray-400">
-          <p>&copy; 2026 Charter Direct. All rights reserved.</p>
+          <p>&copy; 2026 Cast Off. All rights reserved.</p>
           <div className="flex gap-6 mt-4 md:mt-0">
             <Link href="/pricing" className="hover:text-gray-600">Pricing</Link>
             <Link href="/login" className="hover:text-gray-600">Operators</Link>

@@ -14,7 +14,7 @@ export default function DashboardLayout({
             <div className="flex">
               <div className="flex-shrink-0 flex items-center">
                 <Link href="/dashboard" className="text-xl font-bold text-teal-600">
-                  Charter Direct
+                  Cast Off
                 </Link>
               </div>
               <div className="hidden sm:ml-8 sm:flex sm:space-x-8">

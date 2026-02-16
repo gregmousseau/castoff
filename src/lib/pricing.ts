@@ -1,4 +1,4 @@
-// Dynamic Pricing Engine for Charter Direct
+// Dynamic Pricing Engine for Cast Off
 
 import type { Pricing, PriceAdjustment, PriceBreakdown } from './types'
 

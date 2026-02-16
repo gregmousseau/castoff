@@ -2,7 +2,7 @@ import Link from 'next/link'
 import PricingTable from '@/components/PricingTable'
 
 export const metadata = {
-  title: 'Pricing - Charter Direct',
+  title: 'Pricing - Cast Off',
   description: 'Simple, transparent pricing for charter operators. Free to start, Pro to grow.',
 }
 
@@ -13,7 +13,7 @@ export default function PricingPage() {
       <nav className="border-b border-gray-200 bg-white/80 backdrop-blur-sm">
         <div className="max-w-6xl mx-auto px-4 py-4 flex items-center justify-between">
           <Link href="/" className="text-xl font-bold text-sky-600 flex items-center gap-2">
-            ⛵ Charter Direct
+            ⛵ Cast Off
           </Link>
           <div className="flex items-center gap-4">
             <Link href="/" className="text-sm text-gray-600 hover:text-gray-900">
@@ -50,7 +50,7 @@ export default function PricingPage() {
             <div className="grid grid-cols-3 gap-4 text-sm">
               <div></div>
               <div className="font-semibold text-gray-900">Marketplaces</div>
-              <div className="font-semibold text-sky-600">Charter Direct</div>
+              <div className="font-semibold text-sky-600">Cast Off</div>
 
               <div className="text-left text-gray-600">Commission per booking</div>
               <div className="text-red-600 font-medium">15-25%</div>
@@ -69,7 +69,7 @@ export default function PricingPage() {
       </main>
 
       <footer className="border-t border-gray-200 mt-16 py-8 text-center text-gray-400 text-sm">
-        <p>&copy; 2026 Charter Direct. All rights reserved.</p>
+        <p>&copy; 2026 Cast Off. All rights reserved.</p>
       </footer>
     </div>
   )
