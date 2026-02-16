@@ -16,6 +16,9 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "Cast Off — Book Direct with Local Charter Operators",
   description: "Skip the middleman. Book direct with local charter operators and save 15% on every booking.",
+  icons: {
+    icon: "/favicon.svg",
+  },
 };
 
 export default function RootLayout({

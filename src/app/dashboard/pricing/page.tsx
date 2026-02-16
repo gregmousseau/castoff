@@ -81,7 +81,7 @@ function SecurityDepositSection() {
               step="50"
               value={amount}
               onChange={(e) => setAmount(Number(e.target.value))}
-              className="w-32 px-3 py-2 border border-gray-300 rounded-lg text-sm"
+              className="w-32 px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-900"
               placeholder="500"
             />
           </div>
@@ -280,7 +280,7 @@ export default function PricingPage() {
                         onChange={(e) =>
                           setEditValues({ ...editValues, base_price: Number(e.target.value) })
                         }
-                        className="w-24 px-2 py-1 border border-gray-300 rounded-md text-sm"
+                        className="w-24 px-2 py-1 border border-gray-300 rounded-md text-sm text-gray-900"
                       />
                     ) : (
                       <span className="text-sm font-medium text-gray-900">
@@ -298,7 +298,7 @@ export default function PricingPage() {
                         onChange={(e) =>
                           setEditValues({ ...editValues, deposit_amount: Number(e.target.value) })
                         }
-                        className="w-24 px-2 py-1 border border-gray-300 rounded-md text-sm"
+                        className="w-24 px-2 py-1 border border-gray-300 rounded-md text-sm text-gray-900"
                       />
                     ) : (
                       <span className="text-sm text-gray-900">
