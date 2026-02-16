@@ -18,7 +18,7 @@ export async function POST(request: NextRequest) {
     const adminClient = createAdminClient()
     const { data: operator, error: opError } = await adminClient
       .from('operators')
-      .select('id, stripe_account_id, business_name, email')
+      .select('id, stripe_account_id, business_name, email, location')
       .eq('user_id', user.id)
       .single()
     
@@ -31,9 +31,34 @@ export async function POST(request: NextRequest) {
     
     // Create Stripe Connect account if doesn't exist
     if (!accountId) {
+      // Detect country from operator location
+      const locationCountryMap: Record<string, string> = {
+        'bahamas': 'BS',
+        'nassau': 'BS',
+        'canada': 'CA',
+        'ontario': 'CA',
+        'toronto': 'CA',
+        'united states': 'US',
+        'usa': 'US',
+        'florida': 'US',
+        'mexico': 'MX',
+        'uk': 'GB',
+        'united kingdom': 'GB',
+        'australia': 'AU',
+      }
+      
+      const locationLower = (operator.location || '').toLowerCase()
+      let country = 'US' // default
+      for (const [keyword, code] of Object.entries(locationCountryMap)) {
+        if (locationLower.includes(keyword)) {
+          country = code
+          break
+        }
+      }
+
       const account = await stripe.accounts.create({
         type: 'express',
-        country: 'BS', // Bahamas - adjust based on operator location
+        country,
         email: operator.email || undefined,
         capabilities: {
           card_payments: { requested: true },

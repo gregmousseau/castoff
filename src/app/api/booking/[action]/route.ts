@@ -35,6 +35,22 @@ export async function POST(
         status: paymentIntent.status,
         message: "Booking declined. Authorization has been released.",
       });
+    } else if (action === "release-deposit") {
+      // Release a security deposit hold (cancel the auth)
+      const paymentIntent = await stripe.paymentIntents.cancel(paymentIntentId);
+      return NextResponse.json({
+        success: true,
+        status: paymentIntent.status,
+        message: "Security deposit hold has been released.",
+      });
+    } else if (action === "capture-deposit") {
+      // Capture a security deposit (damage claim filed)
+      const paymentIntent = await stripe.paymentIntents.capture(paymentIntentId);
+      return NextResponse.json({
+        success: true,
+        status: paymentIntent.status,
+        message: "Security deposit has been captured for damage claim.",
+      });
     } else {
       return NextResponse.json(
         { error: "Invalid action" },

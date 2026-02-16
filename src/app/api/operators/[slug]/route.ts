@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createAdminClient } from '@/lib/supabase/server'
+import { createClient, createAdminClient } from '@/lib/supabase/server'
 import type { OperatorPageData } from '@/lib/types'
 
 // Mock data for development (when Supabase isn't connected)
@@ -25,6 +25,8 @@ const MOCK_DATA: Record<string, OperatorPageData> = {
       user_id: null,
       source_platform: 'getmyboat',
       source_listing_id: 'VKVQod4Y',
+      security_deposit_enabled: false,
+      security_deposit_amount: 0,
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
     },
@@ -244,4 +246,68 @@ export async function GET(
     return NextResponse.json({ error: 'Operator not found' }, { status: 404 })
   }
   return NextResponse.json(mockData)
+}
+
+// PATCH - update operator settings (security deposit, etc.)
+export async function PATCH(
+  request: NextRequest,
+  { params }: { params: Promise<{ slug: string }> }
+) {
+  const { slug } = await params
+
+  try {
+    const supabase = await createClient()
+    const { data: { user }, error: authError } = await supabase.auth.getUser()
+
+    if (authError || !user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
+    const adminClient = createAdminClient()
+
+    // Verify operator belongs to user
+    const { data: operator, error: opError } = await adminClient
+      .from('operators')
+      .select('id, user_id')
+      .eq('slug', slug)
+      .single()
+
+    if (opError || !operator) {
+      return NextResponse.json({ error: 'Operator not found' }, { status: 404 })
+    }
+
+    if (operator.user_id !== user.id) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+    }
+
+    const body = await request.json()
+    const updates: Record<string, unknown> = {}
+
+    if (typeof body.security_deposit_enabled === 'boolean') {
+      updates.security_deposit_enabled = body.security_deposit_enabled
+    }
+    if (typeof body.security_deposit_amount === 'number') {
+      updates.security_deposit_amount = body.security_deposit_amount
+    }
+
+    if (Object.keys(updates).length === 0) {
+      return NextResponse.json({ error: 'No valid fields to update' }, { status: 400 })
+    }
+
+    const { data, error } = await adminClient
+      .from('operators')
+      .update(updates)
+      .eq('id', operator.id)
+      .select()
+      .single()
+
+    if (error) {
+      return NextResponse.json({ error: 'Failed to update' }, { status: 500 })
+    }
+
+    return NextResponse.json(data)
+  } catch (error) {
+    console.error('PATCH operator error:', error)
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+  }
 }

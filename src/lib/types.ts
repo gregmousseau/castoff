@@ -20,6 +20,8 @@ export interface Operator {
   user_id: string | null
   source_platform: string | null
   source_listing_id: string | null
+  security_deposit_enabled: boolean
+  security_deposit_amount: number
   created_at: string
   updated_at: string
 }
@@ -104,6 +106,9 @@ export interface Booking {
   status: 'pending' | 'confirmed' | 'declined' | 'completed' | 'cancelled' | 'no_show'
   operator_notified_at: string | null
   customer_confirmed_at: string | null
+  security_deposit_amount: number
+  security_deposit_intent_id: string | null
+  security_deposit_status: 'none' | 'authorized' | 'captured' | 'released'
   source: string
   notes: string | null
   created_at: string

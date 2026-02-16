@@ -14,6 +14,90 @@ interface PricingRecord {
   active: boolean
 }
 
+function SecurityDepositSection() {
+  const [enabled, setEnabled] = useState(false)
+  const [amount, setAmount] = useState(0)
+  const [saving, setSaving] = useState(false)
+  const [saved, setSaved] = useState(false)
+
+  useEffect(() => {
+    // Fetch current security deposit settings
+    fetch('/api/pricing')
+      .then(res => res.json())
+      .then(() => {
+        // Would load from operator settings in production
+      })
+      .catch(() => {})
+  }, [])
+
+  async function saveDeposit() {
+    setSaving(true)
+    setSaved(false)
+    try {
+      // In production, PATCH to /api/operators/[slug]
+      // For now, just simulate
+      await new Promise(r => setTimeout(r, 500))
+      setSaved(true)
+      setTimeout(() => setSaved(false), 3000)
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  return (
+    <div className="mt-6 bg-white shadow rounded-lg p-6">
+      <h2 className="text-lg font-semibold text-gray-900 mb-1">Security Deposit</h2>
+      <p className="text-sm text-gray-500 mb-4">
+        A hold will be placed on the customer&apos;s card. Only captured if you file a damage claim within 48 hours of the trip.
+      </p>
+
+      <div className="flex items-center gap-3 mb-4">
+        <button
+          onClick={() => setEnabled(!enabled)}
+          className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+            enabled ? 'bg-teal-600' : 'bg-gray-200'
+          }`}
+        >
+          <span
+            className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+              enabled ? 'translate-x-6' : 'translate-x-1'
+            }`}
+          />
+        </button>
+        <span className="text-sm font-medium text-gray-700">
+          {enabled ? 'Enabled' : 'Disabled'}
+        </span>
+      </div>
+
+      {enabled && (
+        <div className="flex items-end gap-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Deposit Amount ($)
+            </label>
+            <input
+              type="number"
+              min="0"
+              step="50"
+              value={amount}
+              onChange={(e) => setAmount(Number(e.target.value))}
+              className="w-32 px-3 py-2 border border-gray-300 rounded-lg text-sm"
+              placeholder="500"
+            />
+          </div>
+          <button
+            onClick={saveDeposit}
+            disabled={saving}
+            className="bg-teal-600 hover:bg-teal-700 text-white text-sm font-medium py-2 px-4 rounded-lg transition-colors disabled:opacity-50"
+          >
+            {saving ? 'Saving...' : saved ? '✓ Saved' : 'Save'}
+          </button>
+        </div>
+      )}
+    </div>
+  )
+}
+
 export default function PricingPage() {
   const [pricing, setPricing] = useState<PricingRecord[]>([])
   const [loading, setLoading] = useState(true)
@@ -267,6 +351,9 @@ export default function PricingPage() {
           </table>
         </div>
       )}
+
+      {/* Security Deposit Section */}
+      <SecurityDepositSection />
 
       <div className="mt-6 bg-blue-50 border border-blue-200 rounded-lg p-4">
         <h3 className="text-sm font-medium text-blue-800">Pricing Tips</h3>

@@ -3,6 +3,12 @@ import { notFound } from "next/navigation";
 import BookingCalendar from "@/components/BookingCalendar";
 import Reviews from "@/components/Reviews";
 
+// Security deposit info (would come from DB in production)
+const SECURITY_DEPOSITS: Record<string, { enabled: boolean; amount: number }> = {
+  angelo: { enabled: false, amount: 0 },
+  'gregs-charters': { enabled: true, amount: 500 },
+}
+
 // Temporary static data - will be replaced with database
 const operators: Record<string, Operator> = {
   angelo: {
@@ -163,6 +169,26 @@ export default async function OperatorPage({
         </div>
       </div>
 
+      {/* Claim Banner for unclaimed pages */}
+      <div className="max-w-4xl mx-auto px-4 mt-4">
+        <div className="bg-teal-50 border border-teal-200 rounded-lg p-4 flex items-center justify-between">
+          <div>
+            <p className="text-sm font-medium text-teal-900">
+              Are you the owner of {operator.businessName}?
+            </p>
+            <p className="text-xs text-teal-700 mt-1">
+              Claim this page to manage bookings, update pricing, and accept payments directly.
+            </p>
+          </div>
+          <a
+            href={`mailto:support@charterdirect.com?subject=Claim ${operator.businessName}&body=I'd like to claim the page for ${operator.businessName} (${operator.slug}).`}
+            className="shrink-0 ml-4 bg-teal-600 hover:bg-teal-700 text-white text-sm font-medium py-2 px-4 rounded-lg transition-colors"
+          >
+            Claim This Page
+          </a>
+        </div>
+      </div>
+
       <main className="max-w-4xl mx-auto px-4 py-8">
         <div className="grid lg:grid-cols-3 gap-8">
           {/* Main Content */}
@@ -302,6 +328,18 @@ export default async function OperatorPage({
                     Card payments include processing fees + cancellation protection
                   </p>
                 </div>
+
+                {/* Security Deposit */}
+                {SECURITY_DEPOSITS[operator.slug]?.enabled && (
+                  <div className="mt-4 p-4 bg-amber-50 border border-amber-200 rounded-lg">
+                    <p className="text-sm font-semibold text-amber-900">
+                      🛡️ Refundable Security Deposit: ${SECURITY_DEPOSITS[operator.slug].amount}
+                    </p>
+                    <p className="text-xs text-amber-700 mt-1">
+                      A refundable security deposit of ${SECURITY_DEPOSITS[operator.slug].amount} will be authorized (not charged) on your card. Only captured if a damage claim is filed within 48 hours of the trip.
+                    </p>
+                  </div>
+                )}
 
                 {/* Cancellation */}
                 <p className="text-xs text-gray-400 mt-4">
