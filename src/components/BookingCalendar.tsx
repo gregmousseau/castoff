@@ -4,6 +4,7 @@ import { useState } from "react";
 
 interface BookingCalendarProps {
   operatorSlug: string;
+  maxGuests?: number;
 }
 
 // Generate calendar days for a month
@@ -68,7 +69,7 @@ const SLOT_LABELS: Record<string, { label: string; time: string; price: number }
   "full": { label: "Full Day", time: "8:00 AM - 5:00 PM", price: 1000 },
 };
 
-export default function BookingCalendar({ operatorSlug }: BookingCalendarProps) {
+export default function BookingCalendar({ operatorSlug, maxGuests = 20 }: BookingCalendarProps) {
   const today = new Date();
   const [currentMonth, setCurrentMonth] = useState(today.getMonth());
   const [currentYear, setCurrentYear] = useState(today.getFullYear());
@@ -80,6 +81,7 @@ export default function BookingCalendar({ operatorSlug }: BookingCalendarProps) 
     name: "",
     email: "",
     phone: "",
+    partySize: 1,
   });
 
   const days = getCalendarDays(currentYear, currentMonth);
@@ -155,6 +157,7 @@ export default function BookingCalendar({ operatorSlug }: BookingCalendarProps) 
           customerEmail: formData.email,
           customerName: formData.name,
           customerPhone: formData.phone,
+          partySize: formData.partySize,
         }),
       });
 
@@ -310,6 +313,21 @@ export default function BookingCalendar({ operatorSlug }: BookingCalendarProps) 
                 onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-sky-500 focus:border-sky-500"
                 placeholder="+1 234 567 8900"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Party Size <span className="text-gray-400 font-normal">(Max {maxGuests} guests)</span>
+              </label>
+              <input
+                type="number"
+                required
+                min={1}
+                max={maxGuests}
+                value={formData.partySize}
+                onChange={(e) => setFormData({ ...formData, partySize: Math.min(Math.max(1, Number(e.target.value)), maxGuests) })}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-sky-500 focus:border-sky-500"
               />
             </div>
           </div>

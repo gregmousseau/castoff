@@ -68,8 +68,15 @@ export default function PricingPage() {
         </div>
       </main>
 
-      <footer className="border-t border-gray-200 mt-16 py-8 text-center text-gray-400 text-sm">
-        <p>&copy; 2026 Cast Off. All rights reserved.</p>
+      <footer className="border-t border-gray-200 mt-16 py-8">
+        <div className="max-w-6xl mx-auto px-4 flex flex-col md:flex-row items-center justify-between text-sm text-gray-400">
+          <p>&copy; 2026 Cast Off. All rights reserved.</p>
+          <div className="flex gap-6 mt-4 md:mt-0">
+            <Link href="/terms" className="hover:text-gray-600">Terms of Service</Link>
+            <Link href="/privacy" className="hover:text-gray-600">Privacy Policy</Link>
+            <Link href="/pricing" className="hover:text-gray-600">For Operators</Link>
+          </div>
+        </div>
       </footer>
     </div>
   )

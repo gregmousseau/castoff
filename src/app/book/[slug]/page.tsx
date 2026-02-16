@@ -1,4 +1,5 @@
 import Image from "next/image";
+import Link from "next/link";
 import { notFound } from "next/navigation";
 import BookingCalendar from "@/components/BookingCalendar";
 import Reviews from "@/components/Reviews";
@@ -177,6 +178,20 @@ export default async function OperatorPage({
               </section>
             )}
 
+            {/* What to Bring */}
+            {operator.what_to_bring && (
+              <section className="bg-white rounded-xl border border-gray-200 p-6">
+                <h3 className="font-semibold text-gray-900 mb-4">What to Bring</h3>
+                <ul className="space-y-2">
+                  {operator.what_to_bring.split('\n').filter((line: string) => line.trim()).map((line: string, i: number) => (
+                    <li key={i} className="flex items-center gap-2 text-gray-600">
+                      <span className="text-sky-500">•</span> {line.trim()}
+                    </li>
+                  ))}
+                </ul>
+              </section>
+            )}
+
             {/* What's Included */}
             {includedItems.length > 0 && (
               <section className="bg-white rounded-xl border border-gray-200 p-6">
@@ -229,7 +244,7 @@ export default async function OperatorPage({
                 </div>
 
                 {/* Calendar */}
-                <BookingCalendar operatorSlug={operator.slug} />
+                <BookingCalendar operatorSlug={operator.slug} maxGuests={boat?.capacity || 20} />
 
                 {/* Deposit Info */}
                 <div className="mt-4 p-4 bg-sky-50 rounded-lg space-y-2">
@@ -263,10 +278,33 @@ export default async function OperatorPage({
                   </div>
                 )}
 
-                {/* Cancellation */}
-                <p className="text-xs text-gray-400 mt-4">
-                  Free cancellation up to 2 days before your trip.
-                </p>
+                {/* Cancellation Policy */}
+                <div className="mt-4 p-3 bg-gray-50 rounded-lg text-xs text-gray-600 space-y-1">
+                  <p className="font-semibold text-gray-700">
+                    Cancellation Policy ({operator.cancellation_policy === 'flexible' ? 'Flexible' : operator.cancellation_policy === 'strict' ? 'Strict' : 'Moderate'})
+                  </p>
+                  {operator.cancellation_policy === 'flexible' ? (
+                    <>
+                      <p>✓ Free cancellation up to 24 hours before your trip.</p>
+                      <p>✗ Non-refundable within 24 hours of departure.</p>
+                    </>
+                  ) : operator.cancellation_policy === 'strict' ? (
+                    <>
+                      <p>✓ Free cancellation up to 30 days before your trip.</p>
+                      <p>◐ 50% refund 14–30 days before departure.</p>
+                      <p>✗ Non-refundable within 14 days of departure.</p>
+                    </>
+                  ) : (
+                    <>
+                      <p>✓ Free cancellation up to 5 days before your trip.</p>
+                      <p>◐ 50% refund 2–5 days before departure.</p>
+                      <p>✗ Non-refundable within 2 days of departure.</p>
+                    </>
+                  )}
+                  <p className="pt-1 border-t border-gray-200 text-gray-500">
+                    ⛈️ Weather-related cancellations are at the captain&apos;s discretion. Full refund provided if the captain cancels due to weather.
+                  </p>
+                </div>
               </div>
 
               {/* Contact */}
@@ -287,9 +325,15 @@ export default async function OperatorPage({
       </main>
 
       {/* Footer */}
-      <footer className="border-t border-gray-200 mt-12 py-6 text-center text-gray-400 text-sm">
-        <p>Book direct. Save on fees. Support local captains.</p>
-        <p className="mt-1">Powered by <a href="/" className="text-sky-500 hover:underline">Cast Off</a></p>
+      <footer className="border-t border-gray-200 mt-12 py-8">
+        <div className="max-w-6xl mx-auto px-4 flex flex-col md:flex-row items-center justify-between text-sm text-gray-400">
+          <p>&copy; 2026 Cast Off. All rights reserved.</p>
+          <div className="flex gap-6 mt-4 md:mt-0">
+            <Link href="/terms" className="hover:text-gray-600">Terms of Service</Link>
+            <Link href="/privacy" className="hover:text-gray-600">Privacy Policy</Link>
+            <Link href="/pricing" className="hover:text-gray-600">For Operators</Link>
+          </div>
+        </div>
       </footer>
     </div>
   );

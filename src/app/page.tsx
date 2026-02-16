@@ -170,8 +170,9 @@ export default async function Home() {
         <div className="max-w-6xl mx-auto px-4 flex flex-col md:flex-row items-center justify-between text-sm text-gray-400">
           <p>&copy; 2026 Cast Off. All rights reserved.</p>
           <div className="flex gap-6 mt-4 md:mt-0">
-            <Link href="/pricing" className="hover:text-gray-600">Pricing</Link>
-            <Link href="/login" className="hover:text-gray-600">Operators</Link>
+            <Link href="/terms" className="hover:text-gray-600">Terms of Service</Link>
+            <Link href="/privacy" className="hover:text-gray-600">Privacy Policy</Link>
+            <Link href="/pricing" className="hover:text-gray-600">For Operators</Link>
           </div>
         </div>
       </footer>

@@ -98,6 +98,150 @@ function SecurityDepositSection() {
   )
 }
 
+const CANCELLATION_TIERS = [
+  {
+    value: 'flexible',
+    label: 'Flexible',
+    description: 'Free cancellation up to 24 hours before. Non-refundable within 24 hours.',
+  },
+  {
+    value: 'moderate',
+    label: 'Moderate',
+    description: 'Free cancellation up to 5 days before. 50% refund 2–5 days before. Non-refundable within 2 days.',
+  },
+  {
+    value: 'strict',
+    label: 'Strict',
+    description: 'Free cancellation up to 30 days before. 50% refund 14–30 days before. Non-refundable within 14 days.',
+  },
+]
+
+function CancellationPolicySection() {
+  const [policy, setPolicy] = useState('moderate')
+  const [saving, setSaving] = useState(false)
+  const [saved, setSaved] = useState(false)
+
+  useEffect(() => {
+    fetch('/api/operator/me')
+      .then(res => res.ok ? res.json() : null)
+      .then(data => {
+        if (data?.cancellation_policy) setPolicy(data.cancellation_policy)
+      })
+      .catch(() => {})
+  }, [])
+
+  async function savePolicy(value: string) {
+    setPolicy(value)
+    setSaving(true)
+    setSaved(false)
+    try {
+      await fetch('/api/operator/me', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ cancellation_policy: value }),
+      })
+      setSaved(true)
+      setTimeout(() => setSaved(false), 3000)
+    } catch {
+      // silently fail
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  return (
+    <div className="mt-6 bg-white shadow rounded-lg p-6">
+      <h2 className="text-lg font-semibold text-gray-900 mb-1">Cancellation Policy</h2>
+      <p className="text-sm text-gray-500 mb-4">
+        Choose a cancellation policy for your bookings. This will be displayed to customers on your booking page.
+      </p>
+      <div className="space-y-3">
+        {CANCELLATION_TIERS.map((tier) => (
+          <label
+            key={tier.value}
+            className={`flex items-start gap-3 p-3 rounded-lg border cursor-pointer transition-colors ${
+              policy === tier.value ? 'border-teal-500 bg-teal-50' : 'border-gray-200 hover:border-gray-300'
+            }`}
+          >
+            <input
+              type="radio"
+              name="cancellation_policy"
+              value={tier.value}
+              checked={policy === tier.value}
+              onChange={() => savePolicy(tier.value)}
+              className="mt-1 text-teal-600 focus:ring-teal-500"
+            />
+            <div>
+              <p className="font-medium text-gray-900">{tier.label}</p>
+              <p className="text-sm text-gray-500">{tier.description}</p>
+            </div>
+          </label>
+        ))}
+      </div>
+      {saving && <p className="text-sm text-gray-400 mt-2">Saving...</p>}
+      {saved && <p className="text-sm text-green-600 mt-2">✓ Saved</p>}
+    </div>
+  )
+}
+
+function WhatToBringSection() {
+  const [text, setText] = useState('')
+  const [saving, setSaving] = useState(false)
+  const [saved, setSaved] = useState(false)
+
+  useEffect(() => {
+    fetch('/api/operator/me')
+      .then(res => res.ok ? res.json() : null)
+      .then(data => {
+        if (data?.what_to_bring) setText(data.what_to_bring)
+      })
+      .catch(() => {})
+  }, [])
+
+  async function save() {
+    setSaving(true)
+    setSaved(false)
+    try {
+      await fetch('/api/operator/me', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ what_to_bring: text }),
+      })
+      setSaved(true)
+      setTimeout(() => setSaved(false), 3000)
+    } catch {
+      // silently fail
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  return (
+    <div className="mt-6 bg-white shadow rounded-lg p-6">
+      <h2 className="text-lg font-semibold text-gray-900 mb-1">What to Bring</h2>
+      <p className="text-sm text-gray-500 mb-4">
+        Let customers know what to bring on their trip. Enter one item per line.
+      </p>
+      <textarea
+        value={text}
+        onChange={(e) => setText(e.target.value)}
+        rows={5}
+        className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-900 focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
+        placeholder={"Sunscreen\nSunglasses\nTowel\nLight jacket\nSnacks & drinks"}
+      />
+      <div className="mt-3 flex items-center gap-3">
+        <button
+          onClick={save}
+          disabled={saving}
+          className="bg-teal-600 hover:bg-teal-700 text-white text-sm font-medium py-2 px-4 rounded-lg transition-colors disabled:opacity-50"
+        >
+          {saving ? 'Saving...' : saved ? '✓ Saved' : 'Save'}
+        </button>
+      </div>
+    </div>
+  )
+}
+
 export default function PricingPage() {
   const [pricing, setPricing] = useState<PricingRecord[]>([])
   const [loading, setLoading] = useState(true)
@@ -354,6 +498,12 @@ export default function PricingPage() {
 
       {/* Security Deposit Section */}
       <SecurityDepositSection />
+
+      {/* Cancellation Policy Section */}
+      <CancellationPolicySection />
+
+      {/* What to Bring Section */}
+      <WhatToBringSection />
 
       <div className="mt-6 bg-blue-50 border border-blue-200 rounded-lg p-4">
         <h3 className="text-sm font-medium text-blue-800">Pricing Tips</h3>
