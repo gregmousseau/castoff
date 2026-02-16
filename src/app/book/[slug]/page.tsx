@@ -69,7 +69,9 @@ export default async function OperatorPage({
   const fullDay = pricing.find((p) => p.trip_type === "full_day");
   const deposit = halfDay?.deposit_amount || 100;
 
-  const boatPhotos: string[] = boat?.photos || [];
+  // Photos can be strings or {url, caption} objects
+  const rawPhotos: (string | { url: string; caption?: string })[] = boat?.photos || [];
+  const boatPhotos: string[] = rawPhotos.map((p) => (typeof p === "string" ? p : p.url));
   const boatFeatures: string[] = boat?.features || [];
   const heroImage = operator.hero_image || boatPhotos[0] || "/placeholder.jpg";
 
