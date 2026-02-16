@@ -9,6 +9,7 @@ interface OperatorCardProps {
   averageRating: number
   reviewCount: number
   startingPrice: number | null
+  verified?: boolean
 }
 
 export default function OperatorCard({
@@ -19,6 +20,7 @@ export default function OperatorCard({
   averageRating,
   reviewCount,
   startingPrice,
+  verified,
 }: OperatorCardProps) {
   return (
     <Link
@@ -41,8 +43,9 @@ export default function OperatorCard({
 
       {/* Content */}
       <div className="p-4">
-        <h3 className="font-semibold text-gray-900 group-hover:text-sky-600 transition-colors">
+        <h3 className="font-semibold text-gray-900 group-hover:text-sky-600 transition-colors flex items-center gap-1.5">
           {businessName}
+          {verified && <span className="text-green-600 text-xs" title="Verified Captain">✓</span>}
         </h3>
         {location && (
           <p className="text-sm text-gray-500 mt-1 flex items-center gap-1">

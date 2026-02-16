@@ -54,6 +54,18 @@ export default function DashboardLayout({
                 >
                   Payments
                 </Link>
+                <Link
+                  href="/dashboard/messages"
+                  className="border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium"
+                >
+                  Messages
+                </Link>
+                <Link
+                  href="/dashboard/settings"
+                  className="border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium"
+                >
+                  Settings
+                </Link>
               </div>
             </div>
             <div className="flex items-center">
@@ -87,6 +99,12 @@ export default function DashboardLayout({
         </Link>
         <Link href="/dashboard/payments" className="text-sm font-medium text-gray-500 whitespace-nowrap">
           Payments
+        </Link>
+        <Link href="/dashboard/messages" className="text-sm font-medium text-gray-500 whitespace-nowrap">
+          Messages
+        </Link>
+        <Link href="/dashboard/settings" className="text-sm font-medium text-gray-500 whitespace-nowrap">
+          Settings
         </Link>
       </div>
 

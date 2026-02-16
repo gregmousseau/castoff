@@ -22,6 +22,14 @@ export interface Operator {
   source_listing_id: string | null
   security_deposit_enabled: boolean
   security_deposit_amount: number
+  waiver_enabled: boolean
+  waiver_text: string | null
+  instant_booking: boolean
+  verified: boolean
+  verification_docs: { type: string; url: string; verified_at: string | null }[]
+  trip_hold_enabled: boolean
+  cancellation_policy: string | null
+  what_to_bring: string | null
   created_at: string
   updated_at: string
 }
@@ -109,6 +117,13 @@ export interface Booking {
   security_deposit_amount: number
   security_deposit_intent_id: string | null
   security_deposit_status: 'none' | 'authorized' | 'captured' | 'released'
+  waiver_signed_at: string | null
+  waiver_signer_name: string | null
+  waiver_signer_ip: string | null
+  selected_addons: { addon_id: string; name: string; price: number; quantity: number }[]
+  trip_hold_intent_id: string | null
+  trip_hold_status: 'none' | 'authorized' | 'captured' | 'released' | 'expired'
+  trip_hold_amount: number
   source: string
   notes: string | null
   created_at: string
@@ -152,6 +167,18 @@ export interface Addon {
   price_type: 'per_person' | 'flat'
   description: string | null
   active: boolean
+  created_at: string
+}
+
+export interface Message {
+  id: string
+  booking_id: string | null
+  operator_id: string
+  sender_type: 'customer' | 'operator'
+  sender_name: string | null
+  sender_email: string | null
+  message: string
+  read_at: string | null
   created_at: string
 }
 

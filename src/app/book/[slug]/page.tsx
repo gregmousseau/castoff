@@ -3,7 +3,9 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import BookingCalendar from "@/components/BookingCalendar";
 import Reviews from "@/components/Reviews";
+import MessageCaptainForm from "@/components/MessageCaptainForm";
 import { createAdminClient } from "@/lib/supabase/server";
+import type { Metadata } from "next";
 
 async function getOperator(slug: string) {
   const supabase = createAdminClient();
@@ -16,7 +18,7 @@ async function getOperator(slug: string) {
 
   if (!operator) return null;
 
-  const [{ data: boats }, { data: pricing }, { data: reviews }, { data: inclusions }] =
+  const [{ data: boats }, { data: pricing }, { data: reviews }, { data: inclusions }, { data: addons }] =
     await Promise.all([
       supabase
         .from("boats")
@@ -40,6 +42,11 @@ async function getOperator(slug: string) {
         .from("inclusions")
         .select("*")
         .eq("operator_id", operator.id),
+      supabase
+        .from("addons")
+        .select("*")
+        .eq("operator_id", operator.id)
+        .eq("active", true),
     ]);
 
   const boat = boats?.[0] || null;
@@ -49,7 +56,47 @@ async function getOperator(slug: string) {
       ? reviews!.reduce((sum, r) => sum + r.rating, 0) / reviewCount
       : 0;
 
-  return { operator, boat, pricing: pricing || [], reviews: reviews || [], inclusions: inclusions || [], reviewCount, avgRating };
+  return { operator, boat, pricing: pricing || [], reviews: reviews || [], inclusions: inclusions || [], addons: addons || [], reviewCount, avgRating };
+}
+
+// Task 7: SEO Meta Tags
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ slug: string }>;
+}): Promise<Metadata> {
+  const { slug } = await params;
+  const data = await getOperator(slug);
+
+  if (!data) {
+    return { title: "Not Found | Cast Off" };
+  }
+
+  const { operator } = data;
+  const description = operator.description
+    ? operator.description.slice(0, 160)
+    : `Book a charter with ${operator.business_name} directly on Cast Off.`;
+
+  return {
+    title: `${operator.business_name} — Book Direct | Cast Off`,
+    description,
+    openGraph: {
+      title: `${operator.business_name} — Book Direct | Cast Off`,
+      description,
+      type: "website",
+      url: `https://castoff.boats/book/${slug}`,
+      images: operator.hero_image ? [{ url: operator.hero_image }] : [],
+    },
+    twitter: {
+      card: "summary_large_image",
+      title: `${operator.business_name} — Book Direct | Cast Off`,
+      description,
+      images: operator.hero_image ? [operator.hero_image] : [],
+    },
+    alternates: {
+      canonical: `https://castoff.boats/book/${slug}`,
+    },
+  };
 }
 
 export default async function OperatorPage({
@@ -64,13 +111,11 @@ export default async function OperatorPage({
     notFound();
   }
 
-  const { operator, boat, pricing, reviews, inclusions, reviewCount, avgRating } = data;
+  const { operator, boat, pricing, reviews, inclusions, addons, reviewCount, avgRating } = data;
 
   const halfDay = pricing.find((p) => p.trip_type === "half_day_am");
-  const fullDay = pricing.find((p) => p.trip_type === "full_day");
   const deposit = halfDay?.deposit_amount || 100;
 
-  // Photos can be strings or {url, caption} objects
   const rawPhotos: (string | { url: string; caption?: string })[] = boat?.photos || [];
   const boatPhotos: string[] = rawPhotos.map((p) => (typeof p === "string" ? p : p.url));
   const boatFeatures: string[] = boat?.features || [];
@@ -86,6 +131,15 @@ export default async function OperatorPage({
   const includedItems = inclusions.filter((i) => i.included);
   const extraItems = inclusions.filter((i) => !i.included);
 
+  // Format addons for BookingCalendar
+  const formattedAddons = addons.map((a) => ({
+    id: a.id,
+    name: a.name,
+    price: a.price,
+    price_type: a.price_type as 'per_person' | 'flat',
+    description: a.description,
+  }));
+
   return (
     <div className="min-h-screen bg-gradient-to-b from-sky-50 to-white">
       {/* Hero Image */}
@@ -100,7 +154,15 @@ export default async function OperatorPage({
         <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
         <div className="absolute bottom-0 left-0 right-0 p-6 text-white">
           <div className="max-w-4xl mx-auto">
-            <h1 className="text-3xl md:text-4xl font-bold">{operator.business_name}</h1>
+            <h1 className="text-3xl md:text-4xl font-bold flex items-center gap-3">
+              {operator.business_name}
+              {/* Task 6: Verified Badge */}
+              {operator.verified && (
+                <span className="inline-flex items-center gap-1 bg-green-500/90 text-white text-sm font-medium px-2.5 py-0.5 rounded-full">
+                  ✓ Verified Captain
+                </span>
+              )}
+            </h1>
             <p className="flex items-center gap-2 mt-1 text-white/90">
               <span>📍</span> {operator.location}
             </p>
@@ -143,9 +205,7 @@ export default async function OperatorPage({
           <div className="lg:col-span-2 space-y-8">
             {/* About */}
             <section>
-              <h2 className="text-xl font-semibold text-gray-900 mb-3">
-                About
-              </h2>
+              <h2 className="text-xl font-semibold text-gray-900 mb-3">About</h2>
               <p className="text-gray-600 leading-relaxed">{operator.description}</p>
             </section>
 
@@ -154,12 +214,7 @@ export default async function OperatorPage({
               <section className="bg-white rounded-xl border border-gray-200 overflow-hidden">
                 {boatPhotos[0] && (
                   <div className="relative h-48 md:h-64">
-                    <Image
-                      src={boatPhotos[0]}
-                      alt={boat.type || boat.name}
-                      fill
-                      className="object-cover"
-                    />
+                    <Image src={boatPhotos[0]} alt={boat.type || boat.name} fill className="object-cover" />
                   </div>
                 )}
                 <div className="p-6">
@@ -208,9 +263,7 @@ export default async function OperatorPage({
                     <h4 className="text-sm font-medium text-gray-500 mb-2">Optional Add-ons</h4>
                     <ul className="space-y-1">
                       {extraItems.map((item) => (
-                        <li key={item.id} className="text-gray-600">
-                          {item.name}
-                        </li>
+                        <li key={item.id} className="text-gray-600">{item.name}</li>
                       ))}
                     </ul>
                   </div>
@@ -220,9 +273,7 @@ export default async function OperatorPage({
 
             {/* Reviews */}
             <section>
-              <h3 className="font-semibold text-gray-900 mb-4">
-                Guest Reviews ({reviewCount})
-              </h3>
+              <h3 className="font-semibold text-gray-900 mb-4">Guest Reviews ({reviewCount})</h3>
               <Reviews reviews={formattedReviews} />
             </section>
           </div>
@@ -244,13 +295,19 @@ export default async function OperatorPage({
                 </div>
 
                 {/* Calendar */}
-                <BookingCalendar operatorSlug={operator.slug} maxGuests={boat?.capacity || 20} />
+                <BookingCalendar
+                  operatorSlug={operator.slug}
+                  maxGuests={boat?.capacity || 20}
+                  addons={formattedAddons}
+                  waiverEnabled={operator.waiver_enabled}
+                  waiverText={operator.waiver_text}
+                  instantBooking={operator.instant_booking}
+                  tripHoldEnabled={operator.trip_hold_enabled}
+                />
 
                 {/* Deposit Info */}
                 <div className="mt-4 p-4 bg-sky-50 rounded-lg space-y-2">
-                  <p className="text-sm font-semibold text-sky-900">
-                    ${deposit} deposit to reserve
-                  </p>
+                  <p className="text-sm font-semibold text-sky-900">${deposit} deposit to reserve</p>
                   <div className="text-sm text-sky-800 space-y-1">
                     <p className="flex justify-between">
                       <span>💵 Pay remainder in cash:</span>
@@ -307,18 +364,16 @@ export default async function OperatorPage({
                 </div>
               </div>
 
-              {/* Contact */}
-              {operator.email && (
-                <div className="mt-4 bg-white rounded-xl border border-gray-200 p-4">
-                  <h4 className="text-sm font-medium text-gray-500 mb-2">Questions?</h4>
-                  <a
-                    href={`mailto:${operator.email}`}
-                    className="text-sky-600 hover:underline text-sm"
-                  >
+              {/* Contact + Message Captain */}
+              <div className="mt-4 bg-white rounded-xl border border-gray-200 p-4">
+                <h4 className="text-sm font-medium text-gray-500 mb-2">Questions?</h4>
+                {operator.email && (
+                  <a href={`mailto:${operator.email}`} className="text-sky-600 hover:underline text-sm block mb-3">
                     {operator.email}
                   </a>
-                </div>
-              )}
+                )}
+                <MessageCaptainForm operatorId={operator.id} operatorName={operator.business_name} />
+              </div>
             </div>
           </div>
         </div>

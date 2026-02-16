@@ -69,6 +69,12 @@ export async function PATCH(
     if (base_price !== undefined) updates.base_price = base_price
     if (deposit_amount !== undefined) updates.deposit_amount = deposit_amount
     if (active !== undefined) updates.active = active
+    if (typeof body.dynamic_pricing_enabled === 'boolean') updates.dynamic_pricing_enabled = body.dynamic_pricing_enabled
+    if (typeof body.last_minute_discount_percent === 'number') updates.last_minute_discount_percent = body.last_minute_discount_percent
+    if (typeof body.advance_premium_percent === 'number') updates.advance_premium_percent = body.advance_premium_percent
+    if (typeof body.high_demand_premium_percent === 'number') updates.high_demand_premium_percent = body.high_demand_premium_percent
+    if (typeof body.high_demand_threshold === 'number') updates.high_demand_threshold = body.high_demand_threshold
+    if (typeof body.low_availability_premium_percent === 'number') updates.low_availability_premium_percent = body.low_availability_premium_percent
 
     // Update pricing
     const { data: updated, error } = await adminClient

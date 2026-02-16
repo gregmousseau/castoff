@@ -7,7 +7,7 @@ async function getOperators() {
     const supabase = createAdminClient()
     const { data: operators } = await supabase
       .from('operators')
-      .select('id, slug, business_name, location, hero_image')
+      .select('id, slug, business_name, location, hero_image, verified')
       .order('business_name')
 
     if (!operators?.length) return []
@@ -43,6 +43,7 @@ async function getOperators() {
           startingPrice: pricing?.[0]?.base_price ?? null,
           averageRating,
           reviewCount,
+          verified: op.verified || false,
         }
       })
     )

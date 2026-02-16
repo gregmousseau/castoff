@@ -14,6 +14,134 @@ interface PricingRecord {
   active: boolean
 }
 
+function DynamicPricingSection({ pricingRecords }: { pricingRecords: PricingRecord[] }) {
+  const [enabled, setEnabled] = useState(false)
+  const [lastMinute, setLastMinute] = useState(0)
+  const [advance, setAdvance] = useState(0)
+  const [highDemand, setHighDemand] = useState(0)
+  const [saving, setSaving] = useState(false)
+  const [saved, setSaved] = useState(false)
+  const [targetId, setTargetId] = useState<string | null>(null)
+
+  useEffect(() => {
+    // Load from first pricing record
+    if (pricingRecords.length > 0) {
+      const first = pricingRecords[0] as PricingRecord & {
+        dynamic_pricing_enabled?: boolean
+        last_minute_discount_percent?: number
+        advance_premium_percent?: number
+        high_demand_premium_percent?: number
+      }
+      setTargetId(first.id)
+      setEnabled(first.dynamic_pricing_enabled || false)
+      setLastMinute(first.last_minute_discount_percent || 0)
+      setAdvance(first.advance_premium_percent || 0)
+      setHighDemand(first.high_demand_premium_percent || 0)
+    }
+  }, [pricingRecords])
+
+  async function saveDynamic() {
+    if (!targetId) return
+    setSaving(true)
+    setSaved(false)
+    try {
+      // Update all pricing records
+      for (const record of pricingRecords) {
+        await fetch(`/api/pricing/${record.id}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            dynamic_pricing_enabled: enabled,
+            last_minute_discount_percent: lastMinute,
+            advance_premium_percent: advance,
+            high_demand_premium_percent: highDemand,
+          }),
+        })
+      }
+      setSaved(true)
+      setTimeout(() => setSaved(false), 3000)
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  return (
+    <div className="mt-6 bg-white shadow rounded-lg p-6">
+      <h2 className="text-lg font-semibold text-gray-900 mb-1">Dynamic Pricing</h2>
+      <p className="text-sm text-gray-500 mb-4">
+        Automatically adjust prices based on demand and timing.
+      </p>
+
+      <div className="flex items-center gap-3 mb-4">
+        <button
+          onClick={() => setEnabled(!enabled)}
+          className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+            enabled ? 'bg-teal-600' : 'bg-gray-200'
+          }`}
+        >
+          <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+            enabled ? 'translate-x-6' : 'translate-x-1'
+          }`} />
+        </button>
+        <span className="text-sm font-medium text-gray-700">
+          {enabled ? 'Enabled' : 'Disabled'}
+        </span>
+      </div>
+
+      {enabled && (
+        <div className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Last-Minute Discount (% off for bookings within 48 hours)
+            </label>
+            <input
+              type="number"
+              min="0"
+              max="50"
+              value={lastMinute}
+              onChange={(e) => setLastMinute(Number(e.target.value))}
+              className="w-32 px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-900"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Advance Booking Premium (% extra for bookings 30+ days out)
+            </label>
+            <input
+              type="number"
+              min="0"
+              max="50"
+              value={advance}
+              onChange={(e) => setAdvance(Number(e.target.value))}
+              className="w-32 px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-900"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              High Demand Premium (% extra when few slots remain)
+            </label>
+            <input
+              type="number"
+              min="0"
+              max="50"
+              value={highDemand}
+              onChange={(e) => setHighDemand(Number(e.target.value))}
+              className="w-32 px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-900"
+            />
+          </div>
+          <button
+            onClick={saveDynamic}
+            disabled={saving}
+            className="bg-teal-600 hover:bg-teal-700 text-white text-sm font-medium py-2 px-4 rounded-lg transition-colors disabled:opacity-50"
+          >
+            {saving ? 'Saving...' : saved ? '✓ Saved' : 'Save Dynamic Pricing'}
+          </button>
+        </div>
+      )}
+    </div>
+  )
+}
+
 function SecurityDepositSection() {
   const [enabled, setEnabled] = useState(false)
   const [amount, setAmount] = useState(0)
@@ -495,6 +623,9 @@ export default function PricingPage() {
           </table>
         </div>
       )}
+
+      {/* Dynamic Pricing Section */}
+      <DynamicPricingSection pricingRecords={pricing} />
 
       {/* Security Deposit Section */}
       <SecurityDepositSection />

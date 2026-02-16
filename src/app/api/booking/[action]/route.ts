@@ -51,6 +51,36 @@ export async function POST(
         status: paymentIntent.status,
         message: "Security deposit has been captured for damage claim.",
       });
+    } else if (action === "release-hold") {
+      // Release trip hold (customer paid cash)
+      const paymentIntent = await stripe.paymentIntents.cancel(paymentIntentId);
+      return NextResponse.json({
+        success: true,
+        status: paymentIntent.status,
+        message: "Trip hold has been released. Customer paid cash.",
+      });
+    } else if (action === "capture-hold") {
+      // Capture full trip hold (no-show or didn't pay)
+      const paymentIntent = await stripe.paymentIntents.capture(paymentIntentId);
+      return NextResponse.json({
+        success: true,
+        status: paymentIntent.status,
+        message: "Full trip amount has been captured.",
+      });
+    } else if (action === "partial-capture-hold") {
+      // Capture partial amount
+      const { amount } = body;
+      if (!amount || typeof amount !== 'number') {
+        return NextResponse.json({ error: "Missing amount for partial capture" }, { status: 400 });
+      }
+      const paymentIntent = await stripe.paymentIntents.capture(paymentIntentId, {
+        amount_to_capture: amount,
+      });
+      return NextResponse.json({
+        success: true,
+        status: paymentIntent.status,
+        message: `Partial capture of $${(amount / 100).toFixed(2)} completed.`,
+      });
     } else {
       return NextResponse.json(
         { error: "Invalid action" },

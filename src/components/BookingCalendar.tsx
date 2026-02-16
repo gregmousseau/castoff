@@ -2,30 +2,32 @@
 
 import { useState } from "react";
 
+interface AddonItem {
+  id: string;
+  name: string;
+  price: number;
+  price_type: 'per_person' | 'flat';
+  description: string | null;
+}
+
 interface BookingCalendarProps {
   operatorSlug: string;
   maxGuests?: number;
+  addons?: AddonItem[];
+  waiverEnabled?: boolean;
+  waiverText?: string | null;
+  instantBooking?: boolean;
+  tripHoldEnabled?: boolean;
 }
 
-// Generate calendar days for a month
 function getCalendarDays(year: number, month: number) {
   const firstDay = new Date(year, month, 1);
   const lastDay = new Date(year, month + 1, 0);
   const daysInMonth = lastDay.getDate();
   const startingDay = firstDay.getDay();
-
   const days: (number | null)[] = [];
-
-  // Add empty cells for days before the first of the month
-  for (let i = 0; i < startingDay; i++) {
-    days.push(null);
-  }
-
-  // Add days of the month
-  for (let i = 1; i <= daysInMonth; i++) {
-    days.push(i);
-  }
-
+  for (let i = 0; i < startingDay; i++) days.push(null);
+  for (let i = 1; i <= daysInMonth; i++) days.push(i);
   return days;
 }
 
@@ -36,7 +38,6 @@ const MONTH_NAMES = [
 
 const DAY_NAMES = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
-// Mock availability - in production this comes from database
 const mockAvailability: Record<string, string[]> = {
   "2026-02-15": ["half-am", "half-pm", "full"],
   "2026-02-16": ["half-am", "full"],
@@ -49,7 +50,6 @@ const mockAvailability: Record<string, string[]> = {
   "2026-02-26": ["half-am", "half-pm", "full"],
   "2026-02-27": ["half-am", "half-pm", "full"],
   "2026-02-28": ["half-am", "half-pm", "full"],
-  // March dates
   "2026-03-01": ["half-am", "half-pm", "full"],
   "2026-03-02": ["half-am", "half-pm", "full"],
   "2026-03-03": ["half-am", "full"],
@@ -69,7 +69,15 @@ const SLOT_LABELS: Record<string, { label: string; time: string; price: number }
   "full": { label: "Full Day", time: "8:00 AM - 5:00 PM", price: 1000 },
 };
 
-export default function BookingCalendar({ operatorSlug, maxGuests = 20 }: BookingCalendarProps) {
+export default function BookingCalendar({
+  operatorSlug,
+  maxGuests = 20,
+  addons = [],
+  waiverEnabled = false,
+  waiverText,
+  instantBooking = false,
+  tripHoldEnabled = false,
+}: BookingCalendarProps) {
   const today = new Date();
   const [currentMonth, setCurrentMonth] = useState(today.getMonth());
   const [currentYear, setCurrentYear] = useState(today.getFullYear());
@@ -77,6 +85,9 @@ export default function BookingCalendar({ operatorSlug, maxGuests = 20 }: Bookin
   const [selectedSlot, setSelectedSlot] = useState<string | null>(null);
   const [showForm, setShowForm] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [selectedAddons, setSelectedAddons] = useState<string[]>([]);
+  const [waiverAccepted, setWaiverAccepted] = useState(false);
+  const [waiverExpanded, setWaiverExpanded] = useState(false);
   const [formData, setFormData] = useState({
     name: "",
     email: "",
@@ -140,9 +151,22 @@ export default function BookingCalendar({ operatorSlug, maxGuests = 20 }: Bookin
     setShowForm(true);
   };
 
+  const toggleAddon = (addonId: string) => {
+    setSelectedAddons(prev =>
+      prev.includes(addonId) ? prev.filter(id => id !== addonId) : [...prev, addonId]
+    );
+  };
+
+  const calculateAddonTotal = () => {
+    return addons
+      .filter(a => selectedAddons.includes(a.id))
+      .reduce((sum, a) => sum + (a.price_type === 'per_person' ? a.price * formData.partySize : a.price), 0);
+  };
+
   const handleBookNow = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedDate || !selectedSlot || !formData.email) return;
+    if (waiverEnabled && !waiverAccepted) return;
 
     setIsLoading(true);
 
@@ -158,13 +182,16 @@ export default function BookingCalendar({ operatorSlug, maxGuests = 20 }: Bookin
           customerName: formData.name,
           customerPhone: formData.phone,
           partySize: formData.partySize,
+          selectedAddons: selectedAddons,
+          waiverAccepted: waiverEnabled ? waiverAccepted : undefined,
+          waiverSignerName: waiverEnabled ? formData.name : undefined,
         }),
       });
 
       const data = await response.json();
 
-      if (data.url) {
-        window.location.href = data.url;
+      if (data.url || data.checkoutUrl) {
+        window.location.href = data.url || data.checkoutUrl;
       } else {
         alert("Error creating checkout session. Please try again.");
         setIsLoading(false);
@@ -176,47 +203,37 @@ export default function BookingCalendar({ operatorSlug, maxGuests = 20 }: Bookin
     }
   };
 
+  const slotPrice = selectedSlot ? SLOT_LABELS[selectedSlot].price : 0;
+  const addonTotal = calculateAddonTotal();
+  const displayTotal = slotPrice + addonTotal;
+
   return (
     <div>
+      {/* Instant Booking Badge */}
+      {instantBooking && (
+        <div className="mb-3 flex items-center gap-1 text-sm font-medium text-amber-700 bg-amber-50 rounded-lg px-3 py-1.5">
+          <span>⚡</span> Instant Booking
+        </div>
+      )}
+
       {/* Month Navigation */}
       <div className="flex items-center justify-between mb-3">
-        <button
-          onClick={goToPrevMonth}
-          className="p-1 hover:bg-gray-100 rounded-full text-gray-600"
-        >
-          ←
-        </button>
-        <span className="font-medium text-gray-900">
-          {MONTH_NAMES[currentMonth]} {currentYear}
-        </span>
-        <button
-          onClick={goToNextMonth}
-          className="p-1 hover:bg-gray-100 rounded-full text-gray-600"
-        >
-          →
-        </button>
+        <button onClick={goToPrevMonth} className="p-1 hover:bg-gray-100 rounded-full text-gray-600">←</button>
+        <span className="font-medium text-gray-900">{MONTH_NAMES[currentMonth]} {currentYear}</span>
+        <button onClick={goToNextMonth} className="p-1 hover:bg-gray-100 rounded-full text-gray-600">→</button>
       </div>
 
       {/* Calendar Grid */}
       <div className="grid grid-cols-7 gap-1 text-center text-sm">
-        {/* Day Headers */}
         {DAY_NAMES.map((day) => (
-          <div key={day} className="text-gray-400 text-xs py-1">
-            {day}
-          </div>
+          <div key={day} className="text-gray-400 text-xs py-1">{day}</div>
         ))}
-
-        {/* Calendar Days */}
         {days.map((day, i) => {
-          if (day === null) {
-            return <div key={`empty-${i}`} />;
-          }
-
+          if (day === null) return <div key={`empty-${i}`} />;
           const dateKey = formatDateKey(day);
           const available = isAvailable(day);
           const past = isPast(day);
           const selected = selectedDate === dateKey;
-
           return (
             <button
               key={day}
@@ -274,48 +291,72 @@ export default function BookingCalendar({ operatorSlug, maxGuests = 20 }: Bookin
             </p>
           </div>
 
+          {/* Add-ons */}
+          {addons.length > 0 && (
+            <div className="mb-4 space-y-2">
+              <p className="text-sm font-medium text-gray-700">Add-ons:</p>
+              {addons.map((addon) => (
+                <label key={addon.id} className="flex items-start gap-2 p-2 rounded-lg border border-gray-200 hover:border-sky-200 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={selectedAddons.includes(addon.id)}
+                    onChange={() => toggleAddon(addon.id)}
+                    className="mt-1 text-sky-600 focus:ring-sky-500"
+                  />
+                  <div className="flex-1">
+                    <div className="flex justify-between">
+                      <span className="text-sm font-medium text-gray-900">{addon.name}</span>
+                      <span className="text-sm text-gray-700">
+                        ${addon.price}{addon.price_type === 'per_person' ? '/person' : ''}
+                      </span>
+                    </div>
+                    {addon.description && (
+                      <p className="text-xs text-gray-500">{addon.description}</p>
+                    )}
+                  </div>
+                </label>
+              ))}
+              {selectedAddons.length > 0 && (
+                <div className="text-sm text-sky-800 bg-sky-50 rounded-lg p-2">
+                  Trip total: <span className="font-semibold">${displayTotal}</span>
+                </div>
+              )}
+            </div>
+          )}
+
           <div className="space-y-3">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Your Name
-              </label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Your Name</label>
               <input
                 type="text"
                 required
                 value={formData.name}
                 onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-sky-500 focus:border-sky-500"
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-sky-500 focus:border-sky-500"
                 placeholder="John Smith"
               />
             </div>
-
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Email
-              </label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
               <input
                 type="email"
                 required
                 value={formData.email}
                 onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-sky-500 focus:border-sky-500"
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-sky-500 focus:border-sky-500"
                 placeholder="john@email.com"
               />
             </div>
-
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Phone (for day-of contact)
-              </label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Phone (for day-of contact)</label>
               <input
                 type="tel"
                 value={formData.phone}
                 onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-sky-500 focus:border-sky-500"
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-sky-500 focus:border-sky-500"
                 placeholder="+1 234 567 8900"
               />
             </div>
-
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 Party Size <span className="text-gray-400 font-normal">(Max {maxGuests} guests)</span>
@@ -327,23 +368,65 @@ export default function BookingCalendar({ operatorSlug, maxGuests = 20 }: Bookin
                 max={maxGuests}
                 value={formData.partySize}
                 onChange={(e) => setFormData({ ...formData, partySize: Math.min(Math.max(1, Number(e.target.value)), maxGuests) })}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-sky-500 focus:border-sky-500"
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-sky-500 focus:border-sky-500"
               />
             </div>
           </div>
 
+          {/* Waiver */}
+          {waiverEnabled && waiverText && (
+            <div className="mt-4 border border-gray-200 rounded-lg overflow-hidden">
+              <button
+                type="button"
+                onClick={() => setWaiverExpanded(!waiverExpanded)}
+                className="w-full flex items-center justify-between p-3 text-sm font-medium text-gray-700 hover:bg-gray-50"
+              >
+                <span>📋 Liability Waiver</span>
+                <span>{waiverExpanded ? '▲' : '▼'}</span>
+              </button>
+              {waiverExpanded && (
+                <div className="px-3 pb-3 max-h-40 overflow-y-auto text-xs text-gray-600 whitespace-pre-wrap border-t border-gray-100">
+                  {waiverText}
+                </div>
+              )}
+              <div className="px-3 pb-3">
+                <label className="flex items-start gap-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={waiverAccepted}
+                    onChange={(e) => setWaiverAccepted(e.target.checked)}
+                    className="mt-0.5 text-sky-600 focus:ring-sky-500"
+                    required
+                  />
+                  <span className="text-xs text-gray-700">
+                    I have read and agree to the liability waiver
+                  </span>
+                </label>
+              </div>
+            </div>
+          )}
+
+          {/* Trip Hold Info */}
+          {tripHoldEnabled && (
+            <div className="mt-3 p-3 bg-purple-50 border border-purple-200 rounded-lg">
+              <p className="text-xs text-purple-800">
+                🛡️ A hold of ${displayTotal} will be placed on your card to secure your booking. This is NOT a charge. If you pay cash day-of, the hold is released.
+              </p>
+            </div>
+          )}
+
           <button
             type="submit"
-            disabled={isLoading}
+            disabled={isLoading || (waiverEnabled && !waiverAccepted)}
             className={`
               w-full mt-4 font-semibold py-3 px-4 rounded-lg transition-colors
-              ${isLoading
+              ${isLoading || (waiverEnabled && !waiverAccepted)
                 ? "bg-gray-400 cursor-not-allowed"
                 : "bg-sky-600 hover:bg-sky-700 text-white"
               }
             `}
           >
-            {isLoading ? "Redirecting to checkout..." : "Book Now — $100 deposit"}
+            {isLoading ? "Redirecting to checkout..." : instantBooking ? "Book Now — Instant Confirmation" : "Book Now — $100 deposit"}
           </button>
 
           <button

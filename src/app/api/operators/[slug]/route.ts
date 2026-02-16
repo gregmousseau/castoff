@@ -27,6 +27,14 @@ const MOCK_DATA: Record<string, OperatorPageData> = {
       source_listing_id: 'VKVQod4Y',
       security_deposit_enabled: false,
       security_deposit_amount: 0,
+      waiver_enabled: false,
+      waiver_text: null,
+      instant_booking: false,
+      verified: false,
+      verification_docs: [],
+      trip_hold_enabled: false,
+      cancellation_policy: 'moderate',
+      what_to_bring: null,
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
     },
@@ -283,11 +291,24 @@ export async function PATCH(
     const body = await request.json()
     const updates: Record<string, unknown> = {}
 
-    if (typeof body.security_deposit_enabled === 'boolean') {
-      updates.security_deposit_enabled = body.security_deposit_enabled
+    const booleanFields = [
+      'security_deposit_enabled', 'waiver_enabled', 'instant_booking',
+      'trip_hold_enabled',
+    ]
+    const numberFields = ['security_deposit_amount']
+    const stringFields = [
+      'business_name', 'description', 'location', 'email', 'phone',
+      'whatsapp', 'waiver_text', 'cancellation_policy', 'what_to_bring',
+    ]
+
+    for (const field of booleanFields) {
+      if (typeof body[field] === 'boolean') updates[field] = body[field]
     }
-    if (typeof body.security_deposit_amount === 'number') {
-      updates.security_deposit_amount = body.security_deposit_amount
+    for (const field of numberFields) {
+      if (typeof body[field] === 'number') updates[field] = body[field]
+    }
+    for (const field of stringFields) {
+      if (typeof body[field] === 'string') updates[field] = body[field]
     }
 
     if (Object.keys(updates).length === 0) {

@@ -17,6 +17,9 @@ interface Booking {
   deposit_amount: number
   final_price: number | null
   special_requests: string | null
+  trip_hold_status: string | null
+  trip_hold_intent_id: string | null
+  trip_hold_amount: number | null
   created_at: string
 }
 
@@ -200,6 +203,51 @@ function BookingsContent() {
                 </div>
 
                 {/* Actions */}
+                {/* Trip Hold Actions */}
+                {booking.status === 'confirmed' && booking.trip_hold_status === 'authorized' && booking.trip_hold_intent_id && (
+                  <div className="mt-4 pt-4 border-t border-gray-200">
+                    <p className="text-sm font-medium text-purple-800 mb-2">
+                      🛡️ Trip Hold: ${booking.trip_hold_amount?.toLocaleString()} authorized
+                    </p>
+                    <div className="flex flex-col sm:flex-row gap-2">
+                      <button
+                        onClick={async () => {
+                          setActionLoading(booking.id)
+                          try {
+                            await fetch(`/api/booking/release-hold`, {
+                              method: 'POST',
+                              headers: { 'Content-Type': 'application/json' },
+                              body: JSON.stringify({ paymentIntentId: booking.trip_hold_intent_id }),
+                            })
+                            await fetchBookings()
+                          } catch { /* */ } finally { setActionLoading(null) }
+                        }}
+                        disabled={actionLoading === booking.id}
+                        className="px-4 py-2 bg-green-600 text-white text-sm font-medium rounded-lg hover:bg-green-700 disabled:opacity-50"
+                      >
+                        Release Hold (Paid Cash)
+                      </button>
+                      <button
+                        onClick={async () => {
+                          setActionLoading(booking.id)
+                          try {
+                            await fetch(`/api/booking/capture-hold`, {
+                              method: 'POST',
+                              headers: { 'Content-Type': 'application/json' },
+                              body: JSON.stringify({ paymentIntentId: booking.trip_hold_intent_id }),
+                            })
+                            await fetchBookings()
+                          } catch { /* */ } finally { setActionLoading(null) }
+                        }}
+                        disabled={actionLoading === booking.id}
+                        className="px-4 py-2 bg-red-600 text-white text-sm font-medium rounded-lg hover:bg-red-700 disabled:opacity-50"
+                      >
+                        Charge Full Amount (No-Show)
+                      </button>
+                    </div>
+                  </div>
+                )}
+
                 {booking.status === 'pending' && (
                   <div className="mt-4 pt-4 border-t border-gray-200 flex flex-col sm:flex-row gap-3">
                     <button
