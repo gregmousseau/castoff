@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getStripe } from '@/lib/stripe'
 import { createAdminClient } from '@/lib/supabase/server'
+import { sendBookingConfirmation, sendOperatorNewBooking } from '@/lib/email'
 import Stripe from 'stripe'
 
 export async function POST(request: NextRequest) {
@@ -112,7 +113,33 @@ async function handleCheckoutComplete(session: Stripe.Checkout.Session) {
     }
   }
 
-  // TODO: Send notification to operator (email/SMS/WhatsApp)
+  // Send notification email to operator
+  if (process.env.SUPABASE_SERVICE_ROLE_KEY) {
+    try {
+      const supabase = createAdminClient()
+      const { data: operator } = await supabase
+        .from('operators')
+        .select('email, business_name')
+        .eq('id', operatorId)
+        .single()
+
+      if (operator?.email) {
+        await sendOperatorNewBooking(operator.email, {
+          customerName: metadata.customer_name || 'Guest',
+          customerEmail: metadata.customer_email || '',
+          customerPhone: metadata.customer_phone,
+          tripDate: metadata.trip_date || '',
+          tripType: metadata.trip_type || '',
+          partySize: parseInt(metadata.party_size || '1'),
+          totalPrice: parseFloat(metadata.total_price || '0'),
+          specialRequests: metadata.special_requests,
+        })
+      }
+    } catch (emailErr) {
+      console.error('Failed to send operator notification:', emailErr)
+    }
+  }
+  
   console.log(`New booking for operator ${operatorId} - ${metadata.trip_type} on ${metadata.trip_date}`)
 }
 
@@ -149,7 +176,35 @@ async function handlePaymentCaptured(paymentIntent: Stripe.PaymentIntent) {
       .eq('stripe_payment_intent_id', paymentIntent.id)
   }
 
-  // TODO: Send confirmation to customer
+  // Send confirmation email to customer
+  if (process.env.SUPABASE_SERVICE_ROLE_KEY) {
+    try {
+      const supabase = createAdminClient()
+      const { data: booking } = await supabase
+        .from('bookings')
+        .select('*, operators(business_name, email, phone, slug)')
+        .eq('stripe_payment_intent_id', paymentIntent.id)
+        .single()
+
+      if (booking?.customer_email) {
+        const op = booking.operators as Record<string, string> | null
+        await sendBookingConfirmation(booking.customer_email, {
+          customerName: booking.customer_name,
+          businessName: op?.business_name || '',
+          tripDate: booking.trip_date,
+          tripType: booking.trip_type,
+          partySize: booking.party_size,
+          totalPrice: parseFloat(booking.final_price || booking.base_price || '0'),
+          depositAmount: parseFloat(booking.deposit_amount || '0'),
+          operatorEmail: op?.email,
+          operatorPhone: op?.phone,
+          slug: op?.slug || '',
+        })
+      }
+    } catch (emailErr) {
+      console.error('Failed to send customer confirmation:', emailErr)
+    }
+  }
 }
 
 async function handlePaymentCancelled(paymentIntent: Stripe.PaymentIntent) {
@@ -168,7 +223,7 @@ async function handlePaymentCancelled(paymentIntent: Stripe.PaymentIntent) {
       .eq('stripe_payment_intent_id', paymentIntent.id)
   }
 
-  // TODO: Send cancellation notice to customer
+  // TODO: Send cancellation notice to customer (wire up when needed)
 }
 
 async function handleAccountUpdated(account: Stripe.Account) {

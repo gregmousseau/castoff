@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/server'
+import { sendVerificationCode } from '@/lib/email'
 
 // Verify a claim token and send verification email
 export async function POST(request: NextRequest) {
@@ -62,9 +63,14 @@ export async function POST(request: NextRequest) {
       })
       .eq('id', operator.id)
 
-    // TODO: Send verification email via Resend/SendGrid
-    // For now, log it
-    console.log(`Verification code for ${operator.email}: ${verificationCode}`)
+    // Send verification email
+    try {
+      await sendVerificationCode(operator.email, verificationCode, operator.business_name)
+    } catch (emailError) {
+      console.error('Failed to send verification email:', emailError)
+      // Still log the code as fallback
+      console.log(`Verification code for ${operator.email}: ${verificationCode}`)
+    }
 
     return NextResponse.json({
       success: true,
