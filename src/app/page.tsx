@@ -62,7 +62,7 @@ export default async function Home() {
       <nav className="border-b border-gray-200 bg-white/80 backdrop-blur-sm sticky top-0 z-50">
         <div className="max-w-6xl mx-auto px-4 py-4 flex items-center justify-between">
           <span className="text-xl font-bold text-sky-600 flex items-center gap-2">
-            ⛵ Cast Off
+            <img src="/brand/logo-icon.png" alt="Cast Off" className="h-8 w-8 inline-block" /> Cast Off
           </span>
           <div className="flex items-center gap-4">
             <Link href="/pricing" className="text-sm text-gray-600 hover:text-gray-900">
@@ -79,19 +79,25 @@ export default async function Home() {
       </nav>
 
       {/* Hero */}
-      <section className="max-w-6xl mx-auto px-4 py-20 text-center">
-        <h1 className="text-5xl font-bold text-gray-900 mb-4">
+      <section className="relative overflow-hidden">
+        <div className="absolute inset-0 z-0">
+          <img src="/brand/hero-aerial.jpg" alt="" className="w-full h-full object-cover" />
+          <div className="absolute inset-0 bg-gradient-to-b from-sky-900/70 via-sky-900/50 to-sky-50" />
+        </div>
+        <div className="relative z-10 max-w-6xl mx-auto px-4 py-24 md:py-32 text-center">
+        <h1 className="text-5xl font-bold text-white mb-4">
           Book Direct with Local Charter Operators
         </h1>
-        <p className="text-xl text-gray-600 max-w-2xl mx-auto mb-8">
+        <p className="text-xl text-white/90 max-w-2xl mx-auto mb-8">
           Skip the middleman. Save 15% on every booking. Support local captains directly.
         </p>
         <a
           href="#directory"
-          className="inline-block bg-sky-600 hover:bg-sky-700 text-white font-semibold py-3 px-8 rounded-lg transition-colors"
+          className="inline-block bg-sky-500 hover:bg-sky-600 text-white font-semibold py-3 px-8 rounded-lg transition-colors shadow-lg"
         >
           Browse Charters
         </a>
+        </div>
       </section>
 
       {/* How It Works */}
@@ -141,8 +147,11 @@ export default async function Home() {
       </section>
 
       {/* For Operators */}
-      <section className="bg-gray-900 text-white py-20 mt-16">
-        <div className="max-w-6xl mx-auto px-4 text-center">
+      <section className="relative bg-gray-900 text-white py-20 mt-16 overflow-hidden">
+        <div className="absolute inset-0 z-0 opacity-20">
+          <img src="/brand/operator-promo.jpg" alt="" className="w-full h-full object-cover" />
+        </div>
+        <div className="relative z-10 max-w-6xl mx-auto px-4 text-center">
           <h2 className="text-3xl font-bold mb-4">Own Your Bookings</h2>
           <p className="text-gray-300 max-w-2xl mx-auto mb-8">
             Stop giving 15-25% of every booking to marketplace middlemen.

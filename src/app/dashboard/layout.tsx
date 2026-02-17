@@ -13,8 +13,8 @@ export default function DashboardLayout({
           <div className="flex justify-between h-16">
             <div className="flex">
               <div className="flex-shrink-0 flex items-center">
-                <Link href="/dashboard" className="text-xl font-bold text-teal-600">
-                  Cast Off
+                <Link href="/dashboard" className="text-xl font-bold text-teal-600 flex items-center gap-2">
+                  <img src="/brand/logo-icon.png" alt="Cast Off" className="h-7 w-7" /> Cast Off
                 </Link>
               </div>
               <div className="hidden sm:ml-8 sm:flex sm:space-x-8">

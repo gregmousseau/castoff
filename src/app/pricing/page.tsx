@@ -13,7 +13,7 @@ export default function PricingPage() {
       <nav className="border-b border-gray-200 bg-white/80 backdrop-blur-sm">
         <div className="max-w-6xl mx-auto px-4 py-4 flex items-center justify-between">
           <Link href="/" className="text-xl font-bold text-sky-600 flex items-center gap-2">
-            ⛵ Cast Off
+            <img src="/brand/logo-icon.png" alt="Cast Off" className="h-8 w-8 inline-block" /> Cast Off
           </Link>
           <div className="flex items-center gap-4">
             <Link href="/" className="text-sm text-gray-600 hover:text-gray-900">

@@ -17,7 +17,21 @@ export const metadata: Metadata = {
   title: "Cast Off — Book Direct with Local Charter Operators",
   description: "Skip the middleman. Book direct with local charter operators and save 15% on every booking.",
   icons: {
-    icon: "/favicon.svg",
+    icon: "/favicon.ico",
+    apple: "/brand/apple-touch-icon.png",
+  },
+  openGraph: {
+    title: "Cast Off — Book Direct with Local Charter Operators",
+    description: "Skip the middleman. Book direct with local charter operators and save 15% on every booking.",
+    images: ["/brand/og-image.jpg"],
+    siteName: "Cast Off",
+    type: "website",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Cast Off — Book Direct with Local Charter Operators",
+    description: "Skip the middleman. Save 15% on every booking.",
+    images: ["/brand/og-image.jpg"],
   },
 };
 
