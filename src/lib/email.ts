@@ -65,7 +65,7 @@ export async function sendBookingConfirmation(to: string, booking: {
         </p>
         ` : ''}
 
-        <a href="https://castoff.boats/book/${booking.slug}" style="display: inline-block; background: #0ea5e9; color: white; padding: 12px 24px; border-radius: 8px; text-decoration: none; font-weight: 600; margin-top: 16px;">View Booking Details</a>
+        <a href="https://www.castoff.boats/book/${booking.slug}" style="display: inline-block; background: #0ea5e9; color: white; padding: 12px 24px; border-radius: 8px; text-decoration: none; font-weight: 600; margin-top: 16px;">View Booking Details</a>
 
         <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 24px 0;" />
         <p style="color: #9ca3af; font-size: 12px;">Cast Off — Book direct with local charter operators<br/>castoff.boats</p>
@@ -106,7 +106,7 @@ export async function sendOperatorNewBooking(to: string, booking: {
           ${booking.specialRequests ? `<p style="margin-top: 12px; font-size: 14px; color: #6b7280;"><strong>Special requests:</strong> ${booking.specialRequests}</p>` : ''}
         </div>
 
-        <a href="https://castoff.boats/dashboard/bookings" style="display: inline-block; background: #0ea5e9; color: white; padding: 12px 24px; border-radius: 8px; text-decoration: none; font-weight: 600;">Review in Dashboard</a>
+        <a href="https://www.castoff.boats/dashboard/bookings" style="display: inline-block; background: #0ea5e9; color: white; padding: 12px 24px; border-radius: 8px; text-decoration: none; font-weight: 600;">Review in Dashboard</a>
 
         <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 24px 0;" />
         <p style="color: #9ca3af; font-size: 12px;">Cast Off — Book direct with local charter operators<br/>castoff.boats</p>
@@ -167,7 +167,7 @@ export async function sendReviewRequest(to: string, booking: {
         <p>We hope you had an amazing time with <strong>${booking.businessName}</strong>! 🎉</p>
         <p>Your review helps other travelers find great experiences and supports local captains.</p>
 
-        <a href="https://castoff.boats/book/${booking.slug}#reviews" style="display: inline-block; background: #0ea5e9; color: white; padding: 12px 24px; border-radius: 8px; text-decoration: none; font-weight: 600; margin-top: 16px;">Leave a Review</a>
+        <a href="https://www.castoff.boats/book/${booking.slug}#reviews" style="display: inline-block; background: #0ea5e9; color: white; padding: 12px 24px; border-radius: 8px; text-decoration: none; font-weight: 600; margin-top: 16px;">Leave a Review</a>
 
         <p style="font-size: 14px; color: #6b7280; margin-top: 20px;">It only takes a minute and means the world to your captain.</p>
 

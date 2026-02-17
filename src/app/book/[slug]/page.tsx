@@ -84,7 +84,7 @@ export async function generateMetadata({
       title: `${operator.business_name} — Book Direct | Cast Off`,
       description,
       type: "website",
-      url: `https://castoff.boats/book/${slug}`,
+      url: `https://www.castoff.boats/book/${slug}`,
       images: operator.hero_image ? [{ url: operator.hero_image }] : [],
     },
     twitter: {
@@ -94,7 +94,7 @@ export async function generateMetadata({
       images: operator.hero_image ? [operator.hero_image] : [],
     },
     alternates: {
-      canonical: `https://castoff.boats/book/${slug}`,
+      canonical: `https://www.castoff.boats/book/${slug}`,
     },
   };
 }
