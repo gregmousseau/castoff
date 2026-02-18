@@ -27,10 +27,16 @@ export async function POST(request: NextRequest) {
     }
     
     const stripe = getStripe()
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://www.castoff.boats'
+    const businessUrl = `${appUrl}/book/${operator.slug || operator.id}`
     let accountId = operator.stripe_account_id
     
-    // Create Stripe Connect account if doesn't exist
-    if (!accountId) {
+    if (accountId) {
+      // Update existing account's business URL in case it was set incorrectly
+      await stripe.accounts.update(accountId, {
+        business_profile: { url: businessUrl },
+      })
+    } else {
       // Detect country from operator location
       const locationCountryMap: Record<string, string> = {
         'bahamas': 'BS',
@@ -68,7 +74,7 @@ export async function POST(request: NextRequest) {
         business_profile: {
           name: operator.business_name,
           mcc: '4722', // Travel agencies and tour operators
-          url: `${process.env.NEXT_PUBLIC_APP_URL || 'https://www.castoff.boats'}/book/${operator.slug || operator.id}`,
+          url: businessUrl,
         },
       })
       
