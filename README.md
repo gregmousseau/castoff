@@ -110,7 +110,6 @@ Key design decisions:
 
 ## Roadmap
 
-- [ ] Production Stripe keys (currently test mode)
 - [ ] Pre-trip reminder emails (cron)
 - [ ] Post-trip review request emails
 - [ ] Google Calendar sync
