@@ -18,7 +18,7 @@ export async function POST(request: NextRequest) {
     const adminClient = createAdminClient()
     const { data: operator, error: opError } = await adminClient
       .from('operators')
-      .select('id, stripe_account_id, business_name, email, location')
+      .select('id, slug, stripe_account_id, business_name, email, location')
       .eq('user_id', user.id)
       .single()
     
@@ -68,7 +68,7 @@ export async function POST(request: NextRequest) {
         business_profile: {
           name: operator.business_name,
           mcc: '4722', // Travel agencies and tour operators
-          url: `${process.env.NEXT_PUBLIC_APP_URL}/book/${operator.id}`,
+          url: `${process.env.NEXT_PUBLIC_APP_URL || 'https://www.castoff.boats'}/book/${operator.slug || operator.id}`,
         },
       })
       
