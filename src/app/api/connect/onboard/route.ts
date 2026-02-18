@@ -31,6 +31,8 @@ export async function POST(request: NextRequest) {
     const businessUrl = `${appUrl}/book/${operator.slug || operator.id}`
     let accountId = operator.stripe_account_id
     
+    console.log('Stripe Connect debug:', { accountId, businessUrl, slug: operator.slug, id: operator.id, appUrl })
+    
     if (accountId) {
       // Update existing account's business URL in case it was set incorrectly
       await stripe.accounts.update(accountId, {
