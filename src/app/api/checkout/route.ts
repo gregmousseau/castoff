@@ -114,7 +114,7 @@ export async function POST(request: NextRequest) {
         tripDate,
         tripType,
         paypalMerchantId: operator.paypal_merchant_id || undefined,
-        successUrl: `${baseUrl}/book/${operatorSlug}/confirmation?paypal_order_id={ORDER_ID}`,
+        successUrl: `${baseUrl}/book/${operatorSlug}/confirmation`,
         cancelUrl: `${baseUrl}/book/${operatorSlug}?cancelled=true`,
         metadata: {
           party_size: partySize.toString(),
