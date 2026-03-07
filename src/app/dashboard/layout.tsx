@@ -1,12 +1,55 @@
 import Link from 'next/link'
+import AdminBar from '@/components/AdminBar'
+import { createClient, createAdminClient } from '@/lib/supabase/server'
 
-export default function DashboardLayout({
+async function getAdminStatus() {
+  try {
+    const supabase = await createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return { isAdmin: false, operators: [] }
+
+    const adminClient = createAdminClient()
+    const { data: operator } = await adminClient
+      .from('operators')
+      .select('is_admin, slug, business_name')
+      .eq('user_id', user.id)
+      .single()
+
+    if (!operator?.is_admin) return { isAdmin: false, operators: [] }
+
+    // Admin: fetch all operators for the switcher
+    const { data: allOperators } = await adminClient
+      .from('operators')
+      .select('slug, business_name')
+      .order('business_name')
+
+    return {
+      isAdmin: true,
+      operators: allOperators || [],
+      currentSlug: operator.slug,
+    }
+  } catch {
+    return { isAdmin: false, operators: [] }
+  }
+}
+
+export default async function DashboardLayout({
   children,
 }: {
   children: React.ReactNode
 }) {
+  const adminData = await getAdminStatus()
+
   return (
     <div className="min-h-screen bg-gray-50">
+      {/* Admin Bar */}
+      {adminData.isAdmin && (
+        <AdminBar
+          operators={adminData.operators}
+          currentSlug={adminData.currentSlug}
+        />
+      )}
+
       {/* Top nav */}
       <nav className="bg-white border-b border-gray-200">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -66,6 +109,14 @@ export default function DashboardLayout({
                 >
                   Settings
                 </Link>
+                {adminData.isAdmin && (
+                  <Link
+                    href="/dashboard/admin/operators"
+                    className="border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium"
+                  >
+                    Admin
+                  </Link>
+                )}
               </div>
             </div>
             <div className="flex items-center">
@@ -73,7 +124,7 @@ export default function DashboardLayout({
                 href="/dashboard/payments"
                 className="text-gray-500 hover:text-gray-700 px-3 py-2 text-sm font-medium"
               >
-                💳 Payments
+                Payments
               </Link>
             </div>
           </div>
@@ -106,6 +157,11 @@ export default function DashboardLayout({
         <Link href="/dashboard/settings" className="text-sm font-medium text-gray-500 whitespace-nowrap">
           Settings
         </Link>
+        {adminData.isAdmin && (
+          <Link href="/dashboard/admin/operators" className="text-sm font-medium text-gray-500 whitespace-nowrap">
+            Admin
+          </Link>
+        )}
       </div>
 
       {/* Main content */}

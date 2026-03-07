@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 
 interface AddonItem {
   id: string;
@@ -8,6 +8,19 @@ interface AddonItem {
   price: number;
   price_type: 'per_person' | 'flat';
   description: string | null;
+}
+
+interface PricingSlot {
+  id: string;
+  trip_type: string;
+  display_name: string;
+  duration_hours: number | null;
+  base_price: number;
+  deposit_amount: number;
+  included_guests: number | null;
+  extra_person_fee: number;
+  custom_start_time: boolean;
+  default_start_time: string;
 }
 
 interface BookingCalendarProps {
@@ -18,6 +31,7 @@ interface BookingCalendarProps {
   waiverText?: string | null;
   instantBooking?: boolean;
   tripHoldEnabled?: boolean;
+  pricing?: PricingSlot[];
 }
 
 function getCalendarDays(year: number, month: number) {
@@ -38,36 +52,12 @@ const MONTH_NAMES = [
 
 const DAY_NAMES = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
-const mockAvailability: Record<string, string[]> = {
-  "2026-02-15": ["half-am", "half-pm", "full"],
-  "2026-02-16": ["half-am", "full"],
-  "2026-02-17": ["half-pm"],
-  "2026-02-18": ["half-am", "half-pm", "full"],
-  "2026-02-20": ["half-am", "half-pm", "full"],
-  "2026-02-21": ["half-am", "half-pm", "full"],
-  "2026-02-22": ["full"],
-  "2026-02-25": ["half-am", "half-pm", "full"],
-  "2026-02-26": ["half-am", "half-pm", "full"],
-  "2026-02-27": ["half-am", "half-pm", "full"],
-  "2026-02-28": ["half-am", "half-pm", "full"],
-  "2026-03-01": ["half-am", "half-pm", "full"],
-  "2026-03-02": ["half-am", "half-pm", "full"],
-  "2026-03-03": ["half-am", "full"],
-  "2026-03-05": ["half-am", "half-pm", "full"],
-  "2026-03-06": ["half-am", "half-pm", "full"],
-  "2026-03-07": ["full"],
-  "2026-03-08": ["half-am", "half-pm", "full"],
-  "2026-03-10": ["half-am", "half-pm", "full"],
-  "2026-03-12": ["half-am", "half-pm", "full"],
-  "2026-03-14": ["half-am", "half-pm", "full"],
-  "2026-03-15": ["half-am", "half-pm", "full"],
-};
-
-const SLOT_LABELS: Record<string, { label: string; time: string; price: number }> = {
-  "half-am": { label: "Half Day AM", time: "8:00 AM - 12:00 PM", price: 600 },
-  "half-pm": { label: "Half Day PM", time: "1:00 PM - 5:00 PM", price: 600 },
-  "full": { label: "Full Day", time: "8:00 AM - 5:00 PM", price: 1000 },
-};
+function formatTime(timeStr: string): string {
+  const [hours, minutes] = timeStr.split(':').map(Number);
+  const ampm = hours >= 12 ? 'PM' : 'AM';
+  const displayHour = hours % 12 || 12;
+  return `${displayHour}:${String(minutes).padStart(2, '0')} ${ampm}`;
+}
 
 export default function BookingCalendar({
   operatorSlug,
@@ -77,23 +67,72 @@ export default function BookingCalendar({
   waiverText,
   instantBooking = false,
   tripHoldEnabled = false,
+  pricing = [],
 }: BookingCalendarProps) {
   const today = new Date();
   const [currentMonth, setCurrentMonth] = useState(today.getMonth());
   const [currentYear, setCurrentYear] = useState(today.getFullYear());
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
-  const [selectedSlot, setSelectedSlot] = useState<string | null>(null);
+  const [selectedSlot, setSelectedSlot] = useState<PricingSlot | null>(null);
   const [showForm, setShowForm] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [selectedAddons, setSelectedAddons] = useState<string[]>([]);
   const [waiverAccepted, setWaiverAccepted] = useState(false);
   const [waiverExpanded, setWaiverExpanded] = useState(false);
+  const [availability, setAvailability] = useState<Record<string, string[]>>({});
+  const [availabilityLoading, setAvailabilityLoading] = useState(false);
+  const [requestedStartTime, setRequestedStartTime] = useState<string>("");
   const [formData, setFormData] = useState({
     name: "",
     email: "",
     phone: "",
     partySize: 1,
   });
+
+  const fetchAvailability = useCallback(async (year: number, month: number) => {
+    setAvailabilityLoading(true);
+    try {
+      const startDate = `${year}-${String(month + 1).padStart(2, '0')}-01`;
+      const lastDay = new Date(year, month + 1, 0).getDate();
+      const endDate = `${year}-${String(month + 1).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`;
+      const res = await fetch(`/api/booking/availability?slug=${operatorSlug}&start=${startDate}&end=${endDate}`);
+      if (res.ok) {
+        const data = await res.json();
+        setAvailability(data.availability || {});
+      } else {
+        // If API not available, mark all future dates as available with all pricing slots
+        const fallback: Record<string, string[]> = {};
+        const todayDate = new Date();
+        for (let d = 1; d <= lastDay; d++) {
+          const date = new Date(year, month, d);
+          if (date >= todayDate) {
+            const key = `${year}-${String(month + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+            fallback[key] = pricing.map(p => p.trip_type);
+          }
+        }
+        setAvailability(fallback);
+      }
+    } catch {
+      // Fallback: mark future dates as available
+      const lastDay = new Date(year, month + 1, 0).getDate();
+      const fallback: Record<string, string[]> = {};
+      const todayDate = new Date();
+      for (let d = 1; d <= lastDay; d++) {
+        const date = new Date(year, month, d);
+        if (date >= todayDate) {
+          const key = `${year}-${String(month + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+          fallback[key] = pricing.map(p => p.trip_type);
+        }
+      }
+      setAvailability(fallback);
+    } finally {
+      setAvailabilityLoading(false);
+    }
+  }, [operatorSlug, pricing]);
+
+  useEffect(() => {
+    fetchAvailability(currentYear, currentMonth);
+  }, [currentYear, currentMonth, fetchAvailability]);
 
   const days = getCalendarDays(currentYear, currentMonth);
 
@@ -127,7 +166,7 @@ export default function BookingCalendar({
 
   const isAvailable = (day: number) => {
     const dateKey = formatDateKey(day);
-    return mockAvailability[dateKey] && mockAvailability[dateKey].length > 0;
+    return availability[dateKey] && availability[dateKey].length > 0;
   };
 
   const isPast = (day: number) => {
@@ -144,10 +183,12 @@ export default function BookingCalendar({
     setShowForm(false);
   };
 
-  const availableSlots = selectedDate ? mockAvailability[selectedDate] || [] : [];
+  const availableSlotTypes = selectedDate ? availability[selectedDate] || [] : [];
+  const availablePricing = pricing.filter(p => availableSlotTypes.includes(p.trip_type));
 
-  const handleSlotSelect = (slot: string) => {
+  const handleSlotSelect = (slot: PricingSlot) => {
     setSelectedSlot(slot);
+    setRequestedStartTime(slot.default_start_time || "09:00");
     setShowForm(true);
   };
 
@@ -163,6 +204,12 @@ export default function BookingCalendar({
       .reduce((sum, a) => sum + (a.price_type === 'per_person' ? a.price * formData.partySize : a.price), 0);
   };
 
+  const calculateExtraPersonFee = () => {
+    if (!selectedSlot || !selectedSlot.included_guests) return 0;
+    const extraGuests = Math.max(0, formData.partySize - selectedSlot.included_guests);
+    return extraGuests * selectedSlot.extra_person_fee;
+  };
+
   const handleBookNow = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedDate || !selectedSlot || !formData.email) return;
@@ -176,13 +223,14 @@ export default function BookingCalendar({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           operatorSlug,
-          date: selectedDate,
-          slot: selectedSlot,
+          tripDate: selectedDate,
+          tripType: selectedSlot.trip_type,
           customerEmail: formData.email,
           customerName: formData.name,
           customerPhone: formData.phone,
           partySize: formData.partySize,
           selectedAddons: selectedAddons,
+          requestedStartTime: selectedSlot.custom_start_time ? requestedStartTime : undefined,
           waiverAccepted: waiverEnabled ? waiverAccepted : undefined,
           waiverSignerName: waiverEnabled ? formData.name : undefined,
         }),
@@ -203,7 +251,8 @@ export default function BookingCalendar({
     }
   };
 
-  const slotPrice = selectedSlot ? SLOT_LABELS[selectedSlot].price : 0;
+  const extraPersonFee = calculateExtraPersonFee();
+  const slotPrice = selectedSlot ? selectedSlot.base_price + extraPersonFee : 0;
   const addonTotal = calculateAddonTotal();
   const displayTotal = slotPrice + addonTotal;
 
@@ -228,54 +277,67 @@ export default function BookingCalendar({
         {DAY_NAMES.map((day) => (
           <div key={day} className="text-gray-400 text-xs py-1">{day}</div>
         ))}
-        {days.map((day, i) => {
-          if (day === null) return <div key={`empty-${i}`} />;
-          const dateKey = formatDateKey(day);
-          const available = isAvailable(day);
-          const past = isPast(day);
-          const selected = selectedDate === dateKey;
-          return (
-            <button
-              key={day}
-              onClick={() => handleDateClick(day)}
-              disabled={!available || past}
-              className={`
-                aspect-square rounded-lg text-sm font-medium transition-colors
-                ${past ? "text-gray-300 cursor-not-allowed" : ""}
-                ${!past && !available ? "text-gray-400 cursor-not-allowed" : ""}
-                ${!past && available && !selected ? "bg-sky-100 text-sky-700 hover:bg-sky-200 cursor-pointer" : ""}
-                ${selected ? "bg-sky-600 text-white" : ""}
-              `}
-            >
-              {day}
-            </button>
-          );
-        })}
+        {availabilityLoading ? (
+          <div className="col-span-7 py-8 text-center text-gray-400 text-sm">Loading availability...</div>
+        ) : (
+          days.map((day, i) => {
+            if (day === null) return <div key={`empty-${i}`} />;
+            const dateKey = formatDateKey(day);
+            const available = isAvailable(day);
+            const past = isPast(day);
+            const selected = selectedDate === dateKey;
+            return (
+              <button
+                key={day}
+                onClick={() => handleDateClick(day)}
+                disabled={!available || past}
+                className={`
+                  aspect-square rounded-lg text-sm font-medium transition-colors
+                  ${past ? "text-gray-300 cursor-not-allowed" : ""}
+                  ${!past && !available ? "text-gray-400 cursor-not-allowed" : ""}
+                  ${!past && available && !selected ? "bg-sky-100 text-sky-700 hover:bg-sky-200 cursor-pointer" : ""}
+                  ${selected ? "bg-sky-600 text-white" : ""}
+                `}
+              >
+                {day}
+              </button>
+            );
+          })
+        )}
       </div>
 
-      {/* Time Slots */}
+      {/* Time Slots from pricing records */}
       {selectedDate && !showForm && (
         <div className="mt-4 pt-4 border-t border-gray-100">
-          <p className="text-sm text-gray-500 mb-2">Available times:</p>
+          <p className="text-sm text-gray-500 mb-2">Available trips:</p>
           <div className="space-y-2">
-            {availableSlots.map((slot) => {
-              const slotInfo = SLOT_LABELS[slot];
-              return (
-                <button
-                  key={slot}
-                  onClick={() => handleSlotSelect(slot)}
-                  className="w-full text-left p-3 rounded-lg border border-gray-200 hover:border-sky-300 transition-colors"
-                >
-                  <div className="flex justify-between items-center">
-                    <div>
-                      <p className="font-medium text-gray-900">{slotInfo.label}</p>
-                      <p className="text-xs text-gray-500">{slotInfo.time}</p>
-                    </div>
-                    <span className="font-semibold text-gray-900">${slotInfo.price}</span>
+            {availablePricing.map((slot) => (
+              <button
+                key={slot.id}
+                onClick={() => handleSlotSelect(slot)}
+                className="w-full text-left p-3 rounded-lg border border-gray-200 hover:border-sky-300 transition-colors"
+              >
+                <div className="flex justify-between items-center">
+                  <div>
+                    <p className="font-medium text-gray-900">{slot.display_name}</p>
+                    <p className="text-xs text-gray-500">
+                      {slot.duration_hours ? `${slot.duration_hours} hours` : ''}
+                      {slot.default_start_time ? ` · Starts ${formatTime(slot.default_start_time)}` : ''}
+                    </p>
+                    {slot.included_guests && (
+                      <p className="text-xs text-sky-600 mt-0.5">
+                        Price covers {slot.included_guests} guests
+                        {slot.extra_person_fee > 0 && ` · $${slot.extra_person_fee}/extra guest`}
+                      </p>
+                    )}
                   </div>
-                </button>
-              );
-            })}
+                  <span className="font-semibold text-gray-900">${Number(slot.base_price).toLocaleString()}</span>
+                </div>
+              </button>
+            ))}
+            {availablePricing.length === 0 && (
+              <p className="text-sm text-gray-400">No trips available for this date.</p>
+            )}
           </div>
         </div>
       )}
@@ -285,11 +347,34 @@ export default function BookingCalendar({
         <form onSubmit={handleBookNow} className="mt-4 pt-4 border-t border-gray-100">
           <div className="mb-3 p-2 bg-sky-50 rounded-lg">
             <p className="text-sm text-sky-800">
-              <span className="font-medium">{SLOT_LABELS[selectedSlot].label}</span>
-              <span className="mx-2">•</span>
-              <span>${SLOT_LABELS[selectedSlot].price}</span>
+              <span className="font-medium">{selectedSlot.display_name}</span>
+              <span className="mx-2">·</span>
+              <span>${Number(selectedSlot.base_price).toLocaleString()}</span>
             </p>
+            {selectedSlot.included_guests && (
+              <p className="text-xs text-sky-600 mt-1">
+                Up to {selectedSlot.included_guests} guests included
+              </p>
+            )}
           </div>
+
+          {/* Custom Start Time */}
+          {selectedSlot.custom_start_time && (
+            <div className="mb-3">
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Preferred Start Time
+              </label>
+              <input
+                type="time"
+                value={requestedStartTime}
+                onChange={(e) => setRequestedStartTime(e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-sky-500 focus:border-sky-500"
+              />
+              <p className="text-xs text-gray-400 mt-1">
+                Default: {formatTime(selectedSlot.default_start_time)}. You may request a different time.
+              </p>
+            </div>
+          )}
 
           {/* Add-ons */}
           {addons.length > 0 && (
@@ -316,11 +401,6 @@ export default function BookingCalendar({
                   </div>
                 </label>
               ))}
-              {selectedAddons.length > 0 && (
-                <div className="text-sm text-sky-800 bg-sky-50 rounded-lg p-2">
-                  Trip total: <span className="font-semibold">${displayTotal}</span>
-                </div>
-              )}
             </div>
           )}
 
@@ -373,6 +453,23 @@ export default function BookingCalendar({
             </div>
           </div>
 
+          {/* Per-person pricing breakdown */}
+          {selectedSlot.included_guests && formData.partySize > selectedSlot.included_guests && (
+            <div className="mt-3 p-3 bg-sky-50 rounded-lg text-sm text-sky-800">
+              <p className="font-medium mb-1">Price breakdown:</p>
+              <p>Base: ${Number(selectedSlot.base_price).toLocaleString()} (up to {selectedSlot.included_guests} guests)</p>
+              <p>+ {formData.partySize - selectedSlot.included_guests} extra guest{formData.partySize - selectedSlot.included_guests > 1 ? 's' : ''} × ${selectedSlot.extra_person_fee} = ${extraPersonFee.toLocaleString()}</p>
+              <p className="font-semibold mt-1">Trip total: ${displayTotal.toLocaleString()}</p>
+            </div>
+          )}
+
+          {/* Total with addons */}
+          {(selectedAddons.length > 0 || extraPersonFee > 0) && !(selectedSlot.included_guests && formData.partySize > selectedSlot.included_guests) && (
+            <div className="mt-3 text-sm text-sky-800 bg-sky-50 rounded-lg p-2">
+              Trip total: <span className="font-semibold">${displayTotal.toLocaleString()}</span>
+            </div>
+          )}
+
           {/* Waiver */}
           {waiverEnabled && waiverText && (
             <div className="mt-4 border border-gray-200 rounded-lg overflow-hidden">
@@ -381,7 +478,7 @@ export default function BookingCalendar({
                 onClick={() => setWaiverExpanded(!waiverExpanded)}
                 className="w-full flex items-center justify-between p-3 text-sm font-medium text-gray-700 hover:bg-gray-50"
               >
-                <span>📋 Liability Waiver</span>
+                <span>Liability Waiver</span>
                 <span>{waiverExpanded ? '▲' : '▼'}</span>
               </button>
               {waiverExpanded && (
@@ -410,7 +507,7 @@ export default function BookingCalendar({
           {tripHoldEnabled && (
             <div className="mt-3 p-3 bg-purple-50 border border-purple-200 rounded-lg">
               <p className="text-xs text-purple-800">
-                🛡️ A hold of ${displayTotal} will be placed on your card to secure your booking. This is NOT a charge. If you pay cash day-of, the hold is released.
+                A hold of ${displayTotal.toLocaleString()} will be placed on your card to secure your booking. This is NOT a charge. If you pay cash day-of, the hold is released.
               </p>
             </div>
           )}
@@ -426,7 +523,7 @@ export default function BookingCalendar({
               }
             `}
           >
-            {isLoading ? "Redirecting to checkout..." : instantBooking ? "Book Now — Instant Confirmation" : "Book Now — $100 deposit"}
+            {isLoading ? "Redirecting to checkout..." : instantBooking ? "Book Now — Instant Confirmation" : `Book Now — $${selectedSlot.deposit_amount} deposit`}
           </button>
 
           <button
@@ -434,7 +531,7 @@ export default function BookingCalendar({
             onClick={() => setShowForm(false)}
             className="w-full mt-2 text-sm text-gray-500 hover:text-gray-700"
           >
-            ← Back to time slots
+            ← Back to trip options
           </button>
         </form>
       )}

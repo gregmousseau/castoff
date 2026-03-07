@@ -30,6 +30,11 @@ export interface Operator {
   trip_hold_enabled: boolean
   cancellation_policy: string | null
   what_to_bring: string | null
+  payment_method: string
+  paypal_email: string | null
+  paypal_merchant_id: string | null
+  is_admin: boolean
+  max_trips_per_day: number
   created_at: string
   updated_at: string
 }
@@ -63,6 +68,10 @@ export interface Pricing {
   end_time: string | null
   base_price: number
   deposit_amount: number
+  included_guests: number | null
+  extra_person_fee: number
+  custom_start_time: boolean
+  default_start_time: string
   dynamic_pricing_enabled: boolean
   seasonal_rules: SeasonalRule[]
   last_minute_discount_percent: number
@@ -124,6 +133,7 @@ export interface Booking {
   trip_hold_intent_id: string | null
   trip_hold_status: 'none' | 'authorized' | 'captured' | 'released' | 'expired'
   trip_hold_amount: number
+  payment_provider: string
   source: string
   notes: string | null
   created_at: string

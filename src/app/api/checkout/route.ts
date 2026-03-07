@@ -15,6 +15,7 @@ export async function POST(request: NextRequest) {
       customerPhone,
       partySize = 1,
       specialRequests,
+      requestedStartTime,
     } = body
 
     if (!operatorSlug || !tripDate || !tripType || !customerName || !customerEmail) {
@@ -59,7 +60,7 @@ export async function POST(request: NextRequest) {
           weekBookingCount: 0, // TODO: Query actual bookings
           availableSlotsForDate: 3, // TODO: Query actual availability
         }
-        
+
         const priceBreakdown = calculateDynamicPrice(
           pricingToConfig(pricing),
           new Date(tripDate),
@@ -69,6 +70,15 @@ export async function POST(request: NextRequest) {
         basePrice = priceBreakdown.basePrice
         finalPrice = priceBreakdown.finalPrice
         depositAmount = pricing.deposit_amount
+
+        // Calculate extra person fees
+        const includedGuests = pricing.included_guests as number | null
+        const extraPersonFee = Number(pricing.extra_person_fee) || 0
+        if (includedGuests && partySize > includedGuests && extraPersonFee > 0) {
+          const extraGuests = partySize - includedGuests
+          const extraFees = extraGuests * extraPersonFee
+          finalPrice += extraFees
+        }
       }
 
       // Create booking record

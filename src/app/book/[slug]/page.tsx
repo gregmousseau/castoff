@@ -303,6 +303,18 @@ export default async function OperatorPage({
                   waiverText={operator.waiver_text}
                   instantBooking={operator.instant_booking}
                   tripHoldEnabled={operator.trip_hold_enabled}
+                  pricing={pricing.map(p => ({
+                    id: p.id,
+                    trip_type: p.trip_type,
+                    display_name: p.display_name,
+                    duration_hours: p.duration_hours,
+                    base_price: Number(p.base_price),
+                    deposit_amount: Number(p.deposit_amount),
+                    included_guests: p.included_guests ?? null,
+                    extra_person_fee: Number(p.extra_person_fee ?? 0),
+                    custom_start_time: p.custom_start_time ?? false,
+                    default_start_time: p.default_start_time ?? '09:00',
+                  }))}
                 />
 
                 {/* Deposit Info */}

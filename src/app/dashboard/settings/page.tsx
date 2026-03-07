@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
 
 const DEFAULT_WAIVER = `I understand that boating activities carry inherent risks including but not limited to drowning, injury, and property damage. I voluntarily assume all risks. I release [Business Name], its captain, crew, and agents from all liability for injury, death, or property damage arising from this activity. I confirm I can swim and will follow all safety instructions. I am signing this waiver on behalf of myself and all members of my party.`
 
@@ -11,12 +11,22 @@ interface OperatorSettings {
   email: string
   phone: string
   whatsapp: string
+  hero_image: string
   waiver_enabled: boolean
   waiver_text: string
   instant_booking: boolean
   trip_hold_enabled: boolean
   verified: boolean
   verification_docs: { type: string; url: string; verified_at: string | null }[]
+  payment_method: string
+  paypal_email: string
+  paypal_merchant_id: string
+}
+
+interface BoatPhoto {
+  url: string
+  caption?: string
+  order: number
 }
 
 export default function SettingsPage() {
@@ -27,17 +37,26 @@ export default function SettingsPage() {
     email: '',
     phone: '',
     whatsapp: '',
+    hero_image: '',
     waiver_enabled: false,
     waiver_text: DEFAULT_WAIVER,
     instant_booking: false,
     trip_hold_enabled: false,
     verified: false,
     verification_docs: [],
+    payment_method: 'stripe',
+    paypal_email: '',
+    paypal_merchant_id: '',
   })
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
   const [slug, setSlug] = useState('')
+  const [boatPhotos, setBoatPhotos] = useState<BoatPhoto[]>([])
+  const [uploading, setUploading] = useState(false)
+  const heroInputRef = useRef<HTMLInputElement>(null)
+  const photoInputRef = useRef<HTMLInputElement>(null)
+  const [dragOver, setDragOver] = useState(false)
 
   useEffect(() => {
     // Fetch operator settings
@@ -53,12 +72,16 @@ export default function SettingsPage() {
             email: data.operator.email || '',
             phone: data.operator.phone || '',
             whatsapp: data.operator.whatsapp || '',
+            hero_image: data.operator.hero_image || '',
             waiver_enabled: data.operator.waiver_enabled || false,
             waiver_text: data.operator.waiver_text || DEFAULT_WAIVER,
             instant_booking: data.operator.instant_booking || false,
             trip_hold_enabled: data.operator.trip_hold_enabled || false,
             verified: data.operator.verified || false,
             verification_docs: data.operator.verification_docs || [],
+            payment_method: data.operator.payment_method || 'stripe',
+            paypal_email: data.operator.paypal_email || '',
+            paypal_merchant_id: data.operator.paypal_merchant_id || '',
           })
         }
       })
@@ -85,6 +108,9 @@ export default function SettingsPage() {
           waiver_text: settings.waiver_text,
           instant_booking: settings.instant_booking,
           trip_hold_enabled: settings.trip_hold_enabled,
+          payment_method: settings.payment_method,
+          paypal_email: settings.paypal_email,
+          paypal_merchant_id: settings.paypal_merchant_id,
         }),
       })
       if (res.ok) {
@@ -184,6 +210,127 @@ export default function SettingsPage() {
           </div>
         </div>
 
+        {/* Photos */}
+        <div className="bg-white shadow rounded-lg p-6">
+          <h2 className="text-lg font-semibold text-gray-900 mb-4">Photos</h2>
+
+          {/* Hero Image */}
+          <div className="mb-6">
+            <label className="block text-sm font-medium text-gray-700 mb-2">Hero Image</label>
+            {settings.hero_image && (
+              <div className="relative w-full h-40 mb-2 rounded-lg overflow-hidden bg-gray-100">
+                <img src={settings.hero_image} alt="Hero" className="w-full h-full object-cover" />
+              </div>
+            )}
+            <input
+              ref={heroInputRef}
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={async (e) => {
+                const file = e.target.files?.[0]
+                if (!file) return
+                setUploading(true)
+                const formData = new FormData()
+                formData.append('file', file)
+                formData.append('type', 'hero')
+                try {
+                  const res = await fetch('/api/upload', { method: 'POST', body: formData })
+                  if (res.ok) {
+                    const data = await res.json()
+                    setSettings(s => ({ ...s, hero_image: data.url }))
+                  } else {
+                    alert('Upload failed')
+                  }
+                } catch { alert('Upload failed') }
+                finally { setUploading(false) }
+              }}
+            />
+            <button
+              type="button"
+              onClick={() => heroInputRef.current?.click()}
+              disabled={uploading}
+              className="text-sm bg-gray-100 hover:bg-gray-200 text-gray-700 px-4 py-2 rounded-lg transition-colors disabled:opacity-50"
+            >
+              {uploading ? 'Uploading...' : settings.hero_image ? 'Replace Hero Image' : 'Upload Hero Image'}
+            </button>
+          </div>
+
+          {/* Boat Photos Gallery */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">Boat Photos</label>
+            <div className="grid grid-cols-3 gap-2 mb-3">
+              {boatPhotos.map((photo, idx) => (
+                <div key={idx} className="relative group aspect-square rounded-lg overflow-hidden bg-gray-100">
+                  <img src={photo.url} alt={photo.caption || `Photo ${idx + 1}`} className="w-full h-full object-cover" />
+                  <button
+                    type="button"
+                    onClick={() => setBoatPhotos(prev => prev.filter((_, i) => i !== idx))}
+                    className="absolute top-1 right-1 bg-red-500 text-white rounded-full w-5 h-5 text-xs opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center"
+                  >
+                    x
+                  </button>
+                </div>
+              ))}
+            </div>
+            <div
+              onDragOver={(e) => { e.preventDefault(); setDragOver(true) }}
+              onDragLeave={() => setDragOver(false)}
+              onDrop={async (e) => {
+                e.preventDefault()
+                setDragOver(false)
+                const files = Array.from(e.dataTransfer.files).filter(f => f.type.startsWith('image/'))
+                for (const file of files) {
+                  setUploading(true)
+                  const formData = new FormData()
+                  formData.append('file', file)
+                  formData.append('type', 'photo')
+                  try {
+                    const res = await fetch('/api/upload', { method: 'POST', body: formData })
+                    if (res.ok) {
+                      const data = await res.json()
+                      setBoatPhotos(prev => [...prev, { url: data.url, order: prev.length }])
+                    }
+                  } catch { /* ignore */ }
+                  finally { setUploading(false) }
+                }
+              }}
+              className={`border-2 border-dashed rounded-lg p-6 text-center cursor-pointer transition-colors ${
+                dragOver ? 'border-teal-500 bg-teal-50' : 'border-gray-300 hover:border-gray-400'
+              }`}
+              onClick={() => photoInputRef.current?.click()}
+            >
+              <input
+                ref={photoInputRef}
+                type="file"
+                accept="image/*"
+                multiple
+                className="hidden"
+                onChange={async (e) => {
+                  const files = Array.from(e.target.files || [])
+                  for (const file of files) {
+                    setUploading(true)
+                    const formData = new FormData()
+                    formData.append('file', file)
+                    formData.append('type', 'photo')
+                    try {
+                      const res = await fetch('/api/upload', { method: 'POST', body: formData })
+                      if (res.ok) {
+                        const data = await res.json()
+                        setBoatPhotos(prev => [...prev, { url: data.url, order: prev.length }])
+                      }
+                    } catch { /* ignore */ }
+                    finally { setUploading(false) }
+                  }
+                }}
+              />
+              <p className="text-sm text-gray-500">
+                {uploading ? 'Uploading...' : 'Drag & drop photos here, or click to browse'}
+              </p>
+            </div>
+          </div>
+        </div>
+
         {/* Instant Booking */}
         <div className="bg-white shadow rounded-lg p-6">
           <div className="flex items-center justify-between">
@@ -263,6 +410,56 @@ export default function SettingsPage() {
               }`} />
             </button>
           </div>
+        </div>
+
+        {/* Payment Method */}
+        <div className="bg-white shadow rounded-lg p-6">
+          <h2 className="text-lg font-semibold text-gray-900 mb-4">Payment Settings</h2>
+          <div className="mb-4">
+            <label className="block text-sm font-medium text-gray-700 mb-2">Accept Payments Via</label>
+            <div className="flex gap-3">
+              {(['stripe', 'paypal', 'both'] as const).map((method) => (
+                <button
+                  key={method}
+                  type="button"
+                  onClick={() => setSettings({ ...settings, payment_method: method })}
+                  className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                    settings.payment_method === method
+                      ? 'bg-teal-600 text-white'
+                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                  }`}
+                >
+                  {method === 'stripe' ? 'Stripe' : method === 'paypal' ? 'PayPal' : 'Both'}
+                </button>
+              ))}
+            </div>
+          </div>
+          {(settings.payment_method === 'paypal' || settings.payment_method === 'both') && (
+            <div className="space-y-3 mt-4 p-4 bg-blue-50 rounded-lg">
+              <p className="text-sm font-medium text-blue-900">PayPal Configuration</p>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">PayPal Email</label>
+                <input
+                  type="email"
+                  value={settings.paypal_email}
+                  onChange={(e) => setSettings({ ...settings, paypal_email: e.target.value })}
+                  placeholder="your-business@email.com"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-900 focus:ring-2 focus:ring-teal-500"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">PayPal Merchant ID</label>
+                <input
+                  type="text"
+                  value={settings.paypal_merchant_id}
+                  onChange={(e) => setSettings({ ...settings, paypal_merchant_id: e.target.value })}
+                  placeholder="Your PayPal merchant ID"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-900 focus:ring-2 focus:ring-teal-500"
+                />
+                <p className="text-xs text-gray-400 mt-1">Found in your PayPal Business account settings.</p>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Verification */}
