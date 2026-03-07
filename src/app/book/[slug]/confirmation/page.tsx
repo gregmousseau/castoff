@@ -1,60 +1,65 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { getStripe } from "@/lib/stripe";
-
-// Operator data (will move to database)
-const operators: Record<string, { name: string; phone: string }> = {
-  angelo: {
-    name: "Bahamas Water Tours",
-    phone: "+1-242-XXX-XXXX",
-  },
-};
-
-const SLOT_INFO: Record<string, { label: string; time: string }> = {
-  "half-am": { label: "Half Day AM", time: "8:00 AM - 12:00 PM" },
-  "half-pm": { label: "Half Day PM", time: "1:00 PM - 5:00 PM" },
-  full: { label: "Full Day", time: "8:00 AM - 5:00 PM" },
-};
+import { createAdminClient } from "@/lib/supabase/server";
 
 export default async function ConfirmationPage({
   params,
   searchParams,
 }: {
   params: Promise<{ slug: string }>;
-  searchParams: Promise<{ session_id?: string }>;
+  searchParams: Promise<{ session_id?: string; paypal_order_id?: string; token?: string }>;
 }) {
   const { slug } = await params;
-  const { session_id } = await searchParams;
+  const { session_id, paypal_order_id, token } = await searchParams;
 
-  if (!session_id) {
+  // PayPal returns with "token" query param (the order ID)
+  const paypalOrderId = paypal_order_id || token;
+
+  if (!session_id && !paypalOrderId) {
     redirect(`/book/${slug}`);
   }
 
-  const operator = operators[slug];
+  const supabase = createAdminClient();
+
+  // Get operator info
+  const { data: operator } = await supabase
+    .from("operators")
+    .select("business_name, phone, email")
+    .eq("slug", slug)
+    .single();
+
   if (!operator) {
     redirect("/");
   }
 
-  // Fetch the checkout session to get booking details
-  let session;
-  let paymentIntent;
-  try {
-    const stripe = getStripe();
-    session = await stripe.checkout.sessions.retrieve(session_id);
-    if (session.payment_intent) {
-      paymentIntent = await stripe.paymentIntents.retrieve(
-        session.payment_intent as string
-      );
+  // If PayPal, capture the order server-side
+  let paypalCaptured = false;
+  if (paypalOrderId) {
+    try {
+      const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+      const captureRes = await fetch(`${baseUrl}/api/paypal/capture`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ orderId: paypalOrderId }),
+      });
+      const captureData = await captureRes.json();
+      paypalCaptured = captureData.success;
+    } catch (e) {
+      console.error("PayPal capture on confirmation:", e);
     }
-  } catch {
-    redirect(`/book/${slug}`);
   }
 
-  const metadata = paymentIntent?.metadata || session?.metadata || {};
-  const { date, slot, totalPrice, depositAmount } = metadata;
-  const slotInfo = SLOT_INFO[slot] || { label: "Charter", time: "" };
+  // Get the most recent booking for this operator (created within last 30 min)
+  const thirtyMinAgo = new Date(Date.now() - 30 * 60 * 1000).toISOString();
+  const { data: booking } = await supabase
+    .from("bookings")
+    .select("*")
+    .eq("operator_id", (await supabase.from("operators").select("id").eq("slug", slug).single()).data?.id || "")
+    .gte("created_at", thirtyMinAgo)
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .single();
 
-  // Format date nicely
   const formatDate = (dateStr: string) => {
     try {
       const [year, month, day] = dateStr.split("-");
@@ -70,7 +75,11 @@ export default async function ConfirmationPage({
     }
   };
 
-  const remainingAmount = parseInt(totalPrice || "0") - parseInt(depositAmount || "0");
+  const tripDate = booking?.trip_date || "";
+  const finalPrice = Number(booking?.final_price || 0);
+  const depositAmount = Number(booking?.deposit_amount || 0);
+  const remainingAmount = finalPrice - depositAmount;
+  const provider = paypalOrderId ? "paypal" : "stripe";
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-green-50 to-white flex items-center justify-center px-4 py-12">
@@ -82,46 +91,69 @@ export default async function ConfirmationPage({
           </div>
           <h1 className="text-2xl font-bold text-gray-900">Booking Request Sent!</h1>
           <p className="text-gray-600 mt-2">
-            Your deposit has been authorized. {operator.name} will confirm your booking shortly.
+            {provider === "paypal"
+              ? paypalCaptured
+                ? `Your payment has been processed. ${operator.business_name} will confirm your booking shortly.`
+                : `Your booking request has been submitted. ${operator.business_name} will confirm shortly.`
+              : `Your deposit has been authorized. ${operator.business_name} will confirm your booking shortly.`}
           </p>
         </div>
 
         {/* Booking Details Card */}
         <div className="bg-white rounded-xl border border-gray-200 shadow-lg overflow-hidden">
           <div className="bg-sky-600 text-white p-4">
-            <h2 className="font-semibold">{operator.name}</h2>
+            <h2 className="font-semibold">{operator.business_name}</h2>
             <p className="text-sky-100 text-sm">Booking Request</p>
           </div>
 
           <div className="p-6 space-y-4">
-            {/* Date & Time */}
-            <div>
-              <p className="text-sm text-gray-500">Date</p>
-              <p className="font-semibold text-gray-900">{formatDate(date)}</p>
-            </div>
+            {tripDate && (
+              <div>
+                <p className="text-sm text-gray-500">Date</p>
+                <p className="font-semibold text-gray-900">{formatDate(tripDate)}</p>
+              </div>
+            )}
 
-            <div>
-              <p className="text-sm text-gray-500">Trip</p>
-              <p className="font-semibold text-gray-900">{slotInfo.label}</p>
-              <p className="text-gray-600 text-sm">{slotInfo.time}</p>
-            </div>
+            {booking?.trip_type && (
+              <div>
+                <p className="text-sm text-gray-500">Trip</p>
+                <p className="font-semibold text-gray-900">{booking.trip_type.replace(/_/g, " ").replace(/\b\w/g, (c: string) => c.toUpperCase())}</p>
+              </div>
+            )}
+
+            {booking?.party_size && (
+              <div>
+                <p className="text-sm text-gray-500">Party Size</p>
+                <p className="font-semibold text-gray-900">{booking.party_size} guest{booking.party_size > 1 ? "s" : ""}</p>
+              </div>
+            )}
 
             <hr className="border-gray-100" />
 
             {/* Payment Info */}
             <div className="space-y-2">
               <div className="flex justify-between">
-                <span className="text-gray-600">Deposit (authorized)</span>
-                <span className="font-semibold text-gray-900">${depositAmount}</span>
+                <span className="text-gray-600">{provider === "paypal" ? "Deposit (paid)" : "Deposit (authorized)"}</span>
+                <span className="font-semibold text-gray-900">${depositAmount.toLocaleString()}</span>
               </div>
-              <div className="flex justify-between">
-                <span className="text-gray-600">Remainder (due day of trip)</span>
-                <span className="font-semibold text-gray-900">${remainingAmount}</span>
-              </div>
+              {remainingAmount > 0 && (
+                <div className="flex justify-between">
+                  <span className="text-gray-600">Remainder (due day of trip)</span>
+                  <span className="font-semibold text-gray-900">${remainingAmount.toLocaleString()}</span>
+                </div>
+              )}
               <div className="flex justify-between pt-2 border-t border-gray-100">
                 <span className="font-medium text-gray-900">Total</span>
-                <span className="font-bold text-gray-900">${totalPrice}</span>
+                <span className="font-bold text-gray-900">${finalPrice.toLocaleString()}</span>
               </div>
+            </div>
+
+            {/* Payment method badge */}
+            <div className="flex items-center gap-2 text-xs text-gray-500">
+              <span>Paid via</span>
+              <span className={`px-2 py-0.5 rounded font-medium ${provider === "paypal" ? "bg-blue-100 text-blue-800" : "bg-purple-100 text-purple-800"}`}>
+                {provider === "paypal" ? "PayPal" : "Stripe"}
+              </span>
             </div>
           </div>
         </div>
@@ -132,23 +164,24 @@ export default async function ConfirmationPage({
           <ul className="text-sm text-amber-800 space-y-2">
             <li className="flex items-start gap-2">
               <span className="text-amber-500 mt-0.5">1.</span>
-              <span>{operator.name} will review your request (usually within a few hours)</span>
+              <span>{operator.business_name} will review your request (usually within a few hours)</span>
             </li>
             <li className="flex items-start gap-2">
               <span className="text-amber-500 mt-0.5">2.</span>
-              <span>If confirmed, your deposit will be charged and you&apos;ll receive confirmation</span>
+              <span>If confirmed, you&apos;ll receive a confirmation email with trip details</span>
             </li>
             <li className="flex items-start gap-2">
               <span className="text-amber-500 mt-0.5">3.</span>
-              <span>If they can&apos;t accommodate, the hold will be released (no charge)</span>
+              <span>If they can&apos;t accommodate, your {provider === "paypal" ? "payment" : "hold"} will be {provider === "paypal" ? "refunded" : "released"} (no charge)</span>
             </li>
           </ul>
         </div>
 
         {/* Contact Info */}
         <div className="mt-6 text-center text-sm text-gray-500">
-          <p>Questions? Contact the operator directly:</p>
-          <p className="font-medium text-gray-900">{operator.phone}</p>
+          <p>Questions? Contact the operator:</p>
+          {operator.email && <p className="font-medium text-gray-900">{operator.email}</p>}
+          {operator.phone && <p className="font-medium text-gray-900">{operator.phone}</p>}
         </div>
 
         {/* Back Link */}
@@ -157,7 +190,7 @@ export default async function ConfirmationPage({
             href={`/book/${slug}`}
             className="text-sky-600 hover:underline text-sm"
           >
-            ← Back to {operator.name}
+            ← Back to {operator.business_name}
           </Link>
         </div>
       </div>
