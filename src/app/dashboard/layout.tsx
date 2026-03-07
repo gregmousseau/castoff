@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import AdminBar from '@/components/AdminBar'
 import { createClient, createAdminClient } from '@/lib/supabase/server'
+import NavLink from '@/components/NavLink'
 
 async function getAdminStatus() {
   try {
@@ -33,12 +34,25 @@ async function getAdminStatus() {
   }
 }
 
+const NAV_ITEMS = [
+  { href: '/dashboard', label: 'Dashboard', exact: true },
+  { href: '/dashboard/bookings', label: 'Bookings' },
+  { href: '/dashboard/pricing', label: 'Pricing' },
+  { href: '/dashboard/payments', label: 'Payments' },
+  { href: '/dashboard/messages', label: 'Messages' },
+  { href: '/dashboard/settings', label: 'Settings' },
+]
+
 export default async function DashboardLayout({
   children,
 }: {
   children: React.ReactNode
 }) {
   const adminData = await getAdminStatus()
+
+  const allNavItems = adminData.isAdmin
+    ? [...NAV_ITEMS, { href: '/dashboard/admin/operators', label: 'Admin' }]
+    : NAV_ITEMS
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -61,71 +75,12 @@ export default async function DashboardLayout({
                 </Link>
               </div>
               <div className="hidden sm:ml-8 sm:flex sm:space-x-8">
-                <Link
-                  href="/dashboard"
-                  className="border-teal-500 text-gray-900 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium"
-                >
-                  Dashboard
-                </Link>
-                <Link
-                  href="/dashboard/bookings"
-                  className="border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium"
-                >
-                  Bookings
-                </Link>
-                <Link
-                  href="/dashboard/pricing"
-                  className="border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium"
-                >
-                  Pricing
-                </Link>
-                <Link
-                  href="/dashboard/calendar"
-                  className="border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium"
-                >
-                  Calendar
-                </Link>
-                <Link
-                  href="/dashboard/profile"
-                  className="border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium"
-                >
-                  Profile
-                </Link>
-                <Link
-                  href="/dashboard/payments"
-                  className="border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium"
-                >
-                  Payments
-                </Link>
-                <Link
-                  href="/dashboard/messages"
-                  className="border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium"
-                >
-                  Messages
-                </Link>
-                <Link
-                  href="/dashboard/settings"
-                  className="border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium"
-                >
-                  Settings
-                </Link>
-                {adminData.isAdmin && (
-                  <Link
-                    href="/dashboard/admin/operators"
-                    className="border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium"
-                  >
-                    Admin
-                  </Link>
-                )}
+                {allNavItems.map((item) => (
+                  <NavLink key={item.href} href={item.href} exact={item.exact}>
+                    {item.label}
+                  </NavLink>
+                ))}
               </div>
-            </div>
-            <div className="flex items-center">
-              <Link
-                href="/dashboard/payments"
-                className="text-gray-500 hover:text-gray-700 px-3 py-2 text-sm font-medium"
-              >
-                Payments
-              </Link>
             </div>
           </div>
         </div>
@@ -133,35 +88,11 @@ export default async function DashboardLayout({
 
       {/* Mobile nav */}
       <div className="sm:hidden bg-white border-b border-gray-200 px-4 py-2 flex space-x-4 overflow-x-auto">
-        <Link href="/dashboard" className="text-sm font-medium text-gray-900 whitespace-nowrap">
-          Dashboard
-        </Link>
-        <Link href="/dashboard/bookings" className="text-sm font-medium text-gray-500 whitespace-nowrap">
-          Bookings
-        </Link>
-        <Link href="/dashboard/pricing" className="text-sm font-medium text-gray-500 whitespace-nowrap">
-          Pricing
-        </Link>
-        <Link href="/dashboard/calendar" className="text-sm font-medium text-gray-500 whitespace-nowrap">
-          Calendar
-        </Link>
-        <Link href="/dashboard/profile" className="text-sm font-medium text-gray-500 whitespace-nowrap">
-          Profile
-        </Link>
-        <Link href="/dashboard/payments" className="text-sm font-medium text-gray-500 whitespace-nowrap">
-          Payments
-        </Link>
-        <Link href="/dashboard/messages" className="text-sm font-medium text-gray-500 whitespace-nowrap">
-          Messages
-        </Link>
-        <Link href="/dashboard/settings" className="text-sm font-medium text-gray-500 whitespace-nowrap">
-          Settings
-        </Link>
-        {adminData.isAdmin && (
-          <Link href="/dashboard/admin/operators" className="text-sm font-medium text-gray-500 whitespace-nowrap">
-            Admin
-          </Link>
-        )}
+        {allNavItems.map((item) => (
+          <NavLink key={item.href} href={item.href} exact={item.exact} mobile>
+            {item.label}
+          </NavLink>
+        ))}
       </div>
 
       {/* Main content */}

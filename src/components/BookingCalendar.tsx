@@ -77,6 +77,7 @@ export default function BookingCalendar({
   const [showForm, setShowForm] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [selectedAddons, setSelectedAddons] = useState<string[]>([]);
+  const [addonQuantities, setAddonQuantities] = useState<Record<string, number>>({});
   const [waiverAccepted, setWaiverAccepted] = useState(false);
   const [waiverExpanded, setWaiverExpanded] = useState(false);
   const [availability, setAvailability] = useState<Record<string, string[]>>({});
@@ -193,15 +194,37 @@ export default function BookingCalendar({
   };
 
   const toggleAddon = (addonId: string) => {
-    setSelectedAddons(prev =>
-      prev.includes(addonId) ? prev.filter(id => id !== addonId) : [...prev, addonId]
-    );
+    setSelectedAddons(prev => {
+      if (prev.includes(addonId)) {
+        const newQuantities = { ...addonQuantities };
+        delete newQuantities[addonId];
+        setAddonQuantities(newQuantities);
+        return prev.filter(id => id !== addonId);
+      } else {
+        // Default quantity: party size for per_person, 1 for flat
+        const addon = addons.find(a => a.id === addonId);
+        if (addon?.price_type === 'per_person') {
+          setAddonQuantities(q => ({ ...q, [addonId]: formData.partySize }));
+        }
+        return [...prev, addonId];
+      }
+    });
+  };
+
+  const getAddonQuantity = (addonId: string): number => {
+    return addonQuantities[addonId] ?? formData.partySize;
   };
 
   const calculateAddonTotal = () => {
     return addons
       .filter(a => selectedAddons.includes(a.id))
-      .reduce((sum, a) => sum + (a.price_type === 'per_person' ? a.price * formData.partySize : a.price), 0);
+      .reduce((sum, a) => {
+        if (a.price_type === 'per_person') {
+          const qty = getAddonQuantity(a.id);
+          return sum + a.price * qty;
+        }
+        return sum + a.price;
+      }, 0);
   };
 
   const calculateExtraPersonFee = () => {
@@ -380,27 +403,50 @@ export default function BookingCalendar({
           {addons.length > 0 && (
             <div className="mb-4 space-y-2">
               <p className="text-sm font-medium text-gray-700">Add-ons:</p>
-              {addons.map((addon) => (
-                <label key={addon.id} className="flex items-start gap-2 p-2 rounded-lg border border-gray-200 hover:border-sky-200 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={selectedAddons.includes(addon.id)}
-                    onChange={() => toggleAddon(addon.id)}
-                    className="mt-1 text-sky-600 focus:ring-sky-500"
-                  />
-                  <div className="flex-1">
-                    <div className="flex justify-between">
-                      <span className="text-sm font-medium text-gray-900">{addon.name}</span>
-                      <span className="text-sm text-gray-700">
-                        ${addon.price}{addon.price_type === 'per_person' ? '/person' : ''}
-                      </span>
-                    </div>
-                    {addon.description && (
-                      <p className="text-xs text-gray-500">{addon.description}</p>
+              {addons.map((addon) => {
+                const isChecked = selectedAddons.includes(addon.id);
+                const qty = getAddonQuantity(addon.id);
+                return (
+                  <div key={addon.id} className={`p-2 rounded-lg border transition-colors ${isChecked ? 'border-sky-300 bg-sky-50/50' : 'border-gray-200 hover:border-sky-200'}`}>
+                    <label className="flex items-start gap-2 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={isChecked}
+                        onChange={() => toggleAddon(addon.id)}
+                        className="mt-1 text-sky-600 focus:ring-sky-500"
+                      />
+                      <div className="flex-1">
+                        <div className="flex justify-between">
+                          <span className="text-sm font-medium text-gray-900">{addon.name}</span>
+                          <span className="text-sm text-gray-700">
+                            ${addon.price}{addon.price_type === 'per_person' ? '/person' : ''}
+                          </span>
+                        </div>
+                        {addon.description && (
+                          <p className="text-xs text-gray-500">{addon.description}</p>
+                        )}
+                      </div>
+                    </label>
+                    {isChecked && addon.price_type === 'per_person' && (
+                      <div className="mt-2 ml-6 flex items-center gap-2">
+                        <label className="text-xs text-gray-600">How many?</label>
+                        <input
+                          type="number"
+                          min={1}
+                          max={formData.partySize}
+                          value={qty}
+                          onChange={(e) => {
+                            const val = Math.min(Math.max(1, Number(e.target.value)), formData.partySize);
+                            setAddonQuantities(q => ({ ...q, [addon.id]: val }));
+                          }}
+                          className="w-16 px-2 py-1 border border-gray-300 rounded text-sm text-gray-900 focus:ring-2 focus:ring-sky-500"
+                        />
+                        <span className="text-xs text-gray-500">of {formData.partySize} guests · ${addon.price * qty}</span>
+                      </div>
                     )}
                   </div>
-                </label>
-              ))}
+                );
+              })}
             </div>
           )}
 

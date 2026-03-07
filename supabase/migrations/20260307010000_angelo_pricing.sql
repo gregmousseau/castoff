@@ -1,11 +1,11 @@
 -- Angelo's Operator Setup
 -- Deactivate half_day_pm, configure per-person pricing, and update description.
 
--- Deactivate the half_day_pm pricing record for Angelo
+-- Deactivate old half_day_am and half_day_pm pricing records for Angelo
 UPDATE pricing
 SET active = false
 WHERE operator_id = (SELECT id FROM operators WHERE slug = 'angelo')
-  AND trip_type = 'half_day_pm';
+  AND trip_type IN ('half_day_pm', 'half_day_am');
 
 -- Upsert starter trip type
 INSERT INTO pricing (operator_id, trip_type, display_name, duration_hours, base_price, deposit_amount, included_guests, extra_person_fee, custom_start_time, default_start_time, active)

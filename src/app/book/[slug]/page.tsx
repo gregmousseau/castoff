@@ -113,8 +113,8 @@ export default async function OperatorPage({
 
   const { operator, boat, pricing, reviews, inclusions, addons, reviewCount, avgRating } = data;
 
-  const halfDay = pricing.find((p) => p.trip_type === "half_day_am");
-  const deposit = halfDay?.deposit_amount || 100;
+  const firstPricing = pricing[0];
+  const deposit = firstPricing?.deposit_amount || 100;
 
   const rawPhotos: (string | { url: string; caption?: string })[] = boat?.photos || [];
   const boatPhotos: string[] = rawPhotos.map((p) => (typeof p === "string" ? p : p.url));

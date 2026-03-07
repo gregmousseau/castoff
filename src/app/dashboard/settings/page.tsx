@@ -225,7 +225,7 @@ export default function SettingsPage() {
             <input
               ref={heroInputRef}
               type="file"
-              accept="image/*"
+              accept="image/*,video/*"
               className="hidden"
               onChange={async (e) => {
                 const file = e.target.files?.[0]
@@ -279,7 +279,7 @@ export default function SettingsPage() {
               onDrop={async (e) => {
                 e.preventDefault()
                 setDragOver(false)
-                const files = Array.from(e.dataTransfer.files).filter(f => f.type.startsWith('image/'))
+                const files = Array.from(e.dataTransfer.files).filter(f => f.type.startsWith('image/') || f.type.startsWith('video/'))
                 for (const file of files) {
                   setUploading(true)
                   const formData = new FormData()
@@ -303,7 +303,7 @@ export default function SettingsPage() {
               <input
                 ref={photoInputRef}
                 type="file"
-                accept="image/*"
+                accept="image/*,video/*"
                 multiple
                 className="hidden"
                 onChange={async (e) => {
@@ -438,7 +438,7 @@ export default function SettingsPage() {
             <div className="space-y-3 mt-4 p-4 bg-blue-50 rounded-lg">
               <p className="text-sm font-medium text-blue-900">PayPal Configuration</p>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">PayPal Email</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">PayPal Business Email</label>
                 <input
                   type="email"
                   value={settings.paypal_email}
@@ -446,17 +446,7 @@ export default function SettingsPage() {
                   placeholder="your-business@email.com"
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-900 focus:ring-2 focus:ring-teal-500"
                 />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">PayPal Merchant ID</label>
-                <input
-                  type="text"
-                  value={settings.paypal_merchant_id}
-                  onChange={(e) => setSettings({ ...settings, paypal_merchant_id: e.target.value })}
-                  placeholder="Your PayPal merchant ID"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-900 focus:ring-2 focus:ring-teal-500"
-                />
-                <p className="text-xs text-gray-400 mt-1">Found in your PayPal Business account settings.</p>
+                <p className="text-xs text-gray-400 mt-1">The email associated with your PayPal Business account. Payments will be sent here.</p>
               </div>
             </div>
           )}
