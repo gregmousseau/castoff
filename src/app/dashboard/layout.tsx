@@ -40,6 +40,7 @@ const NAV_ITEMS = [
   { href: '/dashboard/pricing', label: 'Pricing' },
   { href: '/dashboard/payments', label: 'Payments' },
   { href: '/dashboard/messages', label: 'Messages' },
+  { href: '/dashboard/media', label: 'Media' },
   { href: '/dashboard/settings', label: 'Settings' },
 ]
 

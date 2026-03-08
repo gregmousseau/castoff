@@ -10,6 +10,7 @@ export interface Operator {
   location: string | null
   description: string | null
   hero_image: string | null
+  thumbnail_image: string | null
   stripe_account_id: string | null
   stripe_onboarding_complete: boolean
   google_calendar_id: string | null
@@ -98,6 +99,22 @@ export interface Availability {
   status: 'available' | 'booked' | 'blocked'
   booking_id: string | null
   external_event_id: string | null
+  created_at: string
+}
+
+export interface OperatorMedia {
+  id: string
+  operator_id: string
+  url: string
+  storage_key: string
+  media_type: 'photo' | 'video'
+  content_type: string | null
+  role: 'hero' | 'thumbnail' | 'gallery'
+  caption: string | null
+  sort_order: number
+  file_size: number | null
+  width: number | null
+  height: number | null
   created_at: string
 }
 

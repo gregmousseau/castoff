@@ -6,6 +6,7 @@ interface OperatorCardProps {
   businessName: string
   location: string | null
   heroImage: string | null
+  thumbnailImage?: string | null
   averageRating: number
   reviewCount: number
   startingPrice: number | null
@@ -17,11 +18,14 @@ export default function OperatorCard({
   businessName,
   location,
   heroImage,
+  thumbnailImage,
   averageRating,
   reviewCount,
   startingPrice,
   verified,
 }: OperatorCardProps) {
+  // Prefer thumbnail for cards, fall back to hero
+  const cardImage = thumbnailImage || heroImage
   return (
     <Link
       href={`/book/${slug}`}
@@ -29,9 +33,9 @@ export default function OperatorCard({
     >
       {/* Image */}
       <div className="relative h-48 w-full bg-gray-100">
-        {heroImage ? (
+        {cardImage ? (
           <Image
-            src={heroImage}
+            src={cardImage}
             alt={businessName}
             fill
             className="object-cover group-hover:scale-105 transition-transform duration-300"

@@ -15,6 +15,7 @@ const MOCK_DATA: Record<string, OperatorPageData> = {
       location: 'Nassau, The Bahamas',
       description: 'Experience the Bahamas like never before with a private, fully curated boat tour. Every trip is tailored to your group — whether you want to explore hidden cays, snorkel pristine reefs, or simply cruise the turquoise waters. All tours are private and can be customized to your liking.',
       hero_image: '/operators/angelo/hero.jpg',
+      thumbnail_image: null,
       stripe_account_id: null,
       stripe_onboarding_complete: false,
       google_calendar_id: null,

@@ -14,6 +14,7 @@ export async function GET() {
         business_name,
         location,
         hero_image,
+        thumbnail_image,
         description
       `)
       .order('business_name')
@@ -52,6 +53,7 @@ export async function GET() {
           businessName: op.business_name,
           location: op.location,
           heroImage: op.hero_image,
+          thumbnailImage: op.thumbnail_image,
           description: op.description,
           startingPrice: pricing?.[0]?.base_price ?? null,
           averageRating,

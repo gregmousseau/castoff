@@ -18,7 +18,7 @@ async function getOperator(slug: string) {
 
   if (!operator) return null;
 
-  const [{ data: boats }, { data: pricing }, { data: reviews }, { data: inclusions }, { data: addons }] =
+  const [{ data: boats }, { data: pricing }, { data: reviews }, { data: inclusions }, { data: addons }, { data: mediaItems }] =
     await Promise.all([
       supabase
         .from("boats")
@@ -47,6 +47,11 @@ async function getOperator(slug: string) {
         .select("*")
         .eq("operator_id", operator.id)
         .eq("active", true),
+      supabase
+        .from("operator_media")
+        .select("*")
+        .eq("operator_id", operator.id)
+        .order("sort_order", { ascending: true }),
     ]);
 
   const boat = boats?.[0] || null;
@@ -56,7 +61,7 @@ async function getOperator(slug: string) {
       ? reviews!.reduce((sum, r) => sum + r.rating, 0) / reviewCount
       : 0;
 
-  return { operator, boat, pricing: pricing || [], reviews: reviews || [], inclusions: inclusions || [], addons: addons || [], reviewCount, avgRating };
+  return { operator, boat, pricing: pricing || [], reviews: reviews || [], inclusions: inclusions || [], addons: addons || [], media: mediaItems || [], reviewCount, avgRating };
 }
 
 // Task 7: SEO Meta Tags
@@ -77,6 +82,9 @@ export async function generateMetadata({
     ? operator.description.slice(0, 160)
     : `Book a charter with ${operator.business_name} directly on Cast Off.`;
 
+  // Prefer thumbnail for social sharing, fall back to hero
+  const ogImage = operator.thumbnail_image || operator.hero_image;
+
   return {
     title: `${operator.business_name} — Book Direct | Cast Off`,
     description,
@@ -85,13 +93,13 @@ export async function generateMetadata({
       description,
       type: "website",
       url: `https://www.castoff.boats/book/${slug}`,
-      images: operator.hero_image ? [{ url: operator.hero_image }] : [],
+      images: ogImage ? [{ url: ogImage }] : [],
     },
     twitter: {
       card: "summary_large_image",
       title: `${operator.business_name} — Book Direct | Cast Off`,
       description,
-      images: operator.hero_image ? [operator.hero_image] : [],
+      images: ogImage ? [ogImage] : [],
     },
     alternates: {
       canonical: `https://www.castoff.boats/book/${slug}`,
@@ -111,7 +119,7 @@ export default async function OperatorPage({
     notFound();
   }
 
-  const { operator, boat, pricing, reviews, inclusions, addons, reviewCount, avgRating } = data;
+  const { operator, boat, pricing, reviews, inclusions, addons, media, reviewCount, avgRating } = data;
 
   const firstPricing = pricing[0];
   const deposit = firstPricing?.deposit_amount || 100;
@@ -120,6 +128,9 @@ export default async function OperatorPage({
   const boatPhotos: string[] = rawPhotos.map((p) => (typeof p === "string" ? p : p.url));
   const boatFeatures: string[] = boat?.features || [];
   const heroImage = operator.hero_image || boatPhotos[0] || "/placeholder.jpg";
+
+  // Gallery: all non-hero media items (photos + videos), sorted by order
+  const galleryItems = media.filter((m: { role: string }) => m.role !== 'hero');
 
   const formattedReviews = reviews.map((r) => ({
     author: r.reviewer_name,
@@ -208,6 +219,43 @@ export default async function OperatorPage({
               <h2 className="text-xl font-semibold text-gray-900 mb-3">About</h2>
               <p className="text-gray-600 leading-relaxed">{operator.description}</p>
             </section>
+
+            {/* Photo & Video Gallery */}
+            {galleryItems.length > 0 && (
+              <section>
+                <h2 className="text-xl font-semibold text-gray-900 mb-3">Photos & Videos</h2>
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-2 rounded-xl overflow-hidden">
+                  {galleryItems.map((item: { id: string; url: string; media_type: string; caption: string | null }, idx: number) => (
+                    <div
+                      key={item.id}
+                      className={`relative bg-gray-100 ${idx === 0 ? 'col-span-2 row-span-2 aspect-[4/3]' : 'aspect-square'}`}
+                    >
+                      {item.media_type === 'video' ? (
+                        <video
+                          src={item.url}
+                          controls
+                          preload="metadata"
+                          className="w-full h-full object-cover"
+                        />
+                      ) : (
+                        <Image
+                          src={item.url}
+                          alt={item.caption || `${operator.business_name} photo ${idx + 1}`}
+                          fill
+                          className="object-cover"
+                          sizes={idx === 0 ? '(max-width: 768px) 100vw, 66vw' : '(max-width: 768px) 50vw, 33vw'}
+                        />
+                      )}
+                      {item.caption && (
+                        <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/60 to-transparent p-2">
+                          <p className="text-xs text-white">{item.caption}</p>
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </section>
+            )}
 
             {/* Boat Info */}
             {boat && (

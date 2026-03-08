@@ -1,9 +1,21 @@
-// Google Cloud Storage utility for photo uploads
-// TODO: Wire up real GCS when credentials are configured
+import { Storage } from '@google-cloud/storage'
 
 interface UploadResult {
   url: string
   key: string
+}
+
+function getStorage(): Storage {
+  return new Storage({
+    projectId: process.env.GCS_PROJECT_ID,
+    credentials: process.env.GCS_SERVICE_ACCOUNT_KEY
+      ? JSON.parse(process.env.GCS_SERVICE_ACCOUNT_KEY)
+      : undefined,
+  })
+}
+
+function getBucketName(): string {
+  return process.env.GCS_BUCKET_NAME || 'castoff-media'
 }
 
 export async function uploadToGCS(
@@ -12,30 +24,30 @@ export async function uploadToGCS(
   contentType: string,
   folder: string = 'photos'
 ): Promise<UploadResult> {
-  const bucketName = process.env.GCS_BUCKET_NAME || 'castoff-photos'
+  const bucketName = getBucketName()
   const key = `${folder}/${Date.now()}-${fileName}`
 
-  // TODO: Implement real GCS upload when credentials are available
-  // const { Storage } = await import('@google-cloud/storage')
-  // const storage = new Storage({
-  //   projectId: process.env.GCS_PROJECT_ID,
-  //   credentials: process.env.GCS_SERVICE_ACCOUNT_KEY
-  //     ? JSON.parse(process.env.GCS_SERVICE_ACCOUNT_KEY)
-  //     : undefined,
-  // })
-  // const bucket = storage.bucket(bucketName)
-  // const blob = bucket.file(key)
-  // await blob.save(file, { contentType, resumable: false })
-  // await blob.makePublic()
-  // return {
-  //   url: `https://storage.googleapis.com/${bucketName}/${key}`,
-  //   key,
-  // }
+  const storage = getStorage()
+  const bucket = storage.bucket(bucketName)
+  const blob = bucket.file(key)
+  await blob.save(file, { contentType, resumable: false })
 
-  throw new Error(
-    `GCS not configured. Set GCS_BUCKET_NAME, GCS_PROJECT_ID, and GOOGLE_APPLICATION_CREDENTIALS or GCS_SERVICE_ACCOUNT_KEY. ` +
-    `Bucket: ${bucketName}, Key: ${key}`
-  )
+  return {
+    url: `https://storage.googleapis.com/${bucketName}/${key}`,
+    key,
+  }
+}
+
+export async function deleteFromGCS(key: string): Promise<void> {
+  const storage = getStorage()
+  const bucket = storage.bucket(getBucketName())
+  try {
+    await bucket.file(key).delete()
+  } catch (err: unknown) {
+    const error = err as { code?: number }
+    // Ignore 404 - file already gone
+    if (error.code !== 404) throw err
+  }
 }
 
 export function isGCSConfigured(): boolean {
@@ -47,6 +59,6 @@ export function isGCSConfigured(): boolean {
 }
 
 export function getPublicUrl(key: string): string {
-  const bucketName = process.env.GCS_BUCKET_NAME || 'castoff-photos'
+  const bucketName = getBucketName()
   return `https://storage.googleapis.com/${bucketName}/${key}`
 }
